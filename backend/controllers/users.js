@@ -2,7 +2,6 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const userModel = require("../models/userModel");
-const storeModel = require("../models/storeModel");
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -100,7 +99,8 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    const user = await userModel.findUserById(userId);
+    const user =
+      await userModel.findUserById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -208,7 +208,14 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    const user = await userModel.findUserById(userId);
+    if (!["email", "phone"].includes(method)) {
+      return res.status(400).json({
+        error: "OTP method must be email or phone",
+      });
+    }
+
+    const user =
+      await userModel.findUserById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -256,7 +263,8 @@ exports.verifyOtp = async (req, res) => {
     const updatedUser =
       await userModel.findUserById(userId);
 
-    const token = generateToken(updatedUser);
+    const token =
+      generateToken(updatedUser);
 
     return res.status(200).json({
       message: "OTP verified successfully",
@@ -330,7 +338,8 @@ exports.login = async (req, res) => {
       true
     );
 
-    const token = generateToken(user);
+    const token =
+      generateToken(user);
 
     return res.status(200).json({
       message: "Login successful",
@@ -359,7 +368,9 @@ exports.login = async (req, res) => {
 exports.getUser = async (req, res) => {
   try {
     const user =
-      await userModel.getUser(req.params.id);
+      await userModel.getUser(
+        req.params.id
+      );
 
     if (!user) {
       return res.status(404).json({
@@ -404,84 +415,6 @@ exports.updateUser = async (req, res) => {
 
     return res.status(500).json({
       error: "Failed to update user",
-    });
-  }
-};
-
-exports.completeOnboarding = async (
-  req,
-  res
-) => {
-  try {
-    const userId = req.user.id;
-
-    const existingStore =
-      await storeModel.getStoreByUserId(
-        userId
-      );
-
-    if (existingStore) {
-      return res.status(409).json({
-        error: "Store setup is already completed",
-        store: existingStore,
-      });
-    }
-
-    const store =
-      await storeModel.createStore({
-        userId,
-        ...req.body,
-      });
-
-    const user =
-      await userModel.completeOnboarding(
-        userId
-      );
-
-    return res.status(201).json({
-      message: "Onboarding completed successfully",
-      store,
-      onboarding_completed:
-        user.onboarding_completed,
-    });
-  } catch (error) {
-    console.error(
-      "Complete onboarding error:",
-      error
-    );
-
-    return res.status(500).json({
-      error: "Failed to complete onboarding",
-    });
-  }
-};
-
-exports.getMyStore = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const store =
-      await storeModel.getStoreByUserId(
-        userId
-      );
-
-    if (!store) {
-      return res.status(404).json({
-        error: "Store not found",
-      });
-    }
-
-    return res.status(200).json({
-      store,
-    });
-  } catch (error) {
-    console.error(
-      "Get store error:",
-      error
-    );
-
-    return res.status(500).json({
-      error: "Failed to get store",
     });
   }
 };
