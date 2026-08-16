@@ -1,4 +1,4 @@
-const exconst express = require("express");
+const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -13,6 +13,5 @@ app.use(cookieParser());
 
 
 const server = http.createServer(app);
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}...`);
-});
+
+server.listen(PORT, () => {console.log(`Server running on port ${PORT}...`);});

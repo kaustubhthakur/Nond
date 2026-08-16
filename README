@@ -1,3 +1,54 @@
 NOND 
 
 It is a smart inventory management application built for small vendors ,It helps businesses like electronics, stationery, kirana, and other retail stores manage their inventory efficiently.
+
+                    VENDOR
+                      │
+                      ▼
+              Create Store Profile
+                      │
+                      ▼
+             Select Business Type
+       ┌──────────────┼──────────────┐
+       ▼              ▼              ▼
+    Grocery       Stationery       Mobile
+       │              │              │
+       └──────────────┼──────────────┘
+                      ▼
+                 Add Products
+                      │
+                      ▼
+             Organize Products
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+    Category       Brand         Supplier
+        │             │             │
+        └─────────────┼─────────────┘
+                      ▼
+                Manage Stock
+                      │
+          ┌───────────┼───────────┐
+          ▼                       ▼
+       Purchase                  Sale
+          │                       │
+          ▼                       ▼
+      Supplier                 Customer
+          │                       │
+          └───────────┬───────────┘
+                      ▼
+                 Transaction
+                      │
+                      ▼
+               Business History
+                      │
+                      ▼
+              Connected Business
+                  Information
+                      │
+          ┌───────────┼───────────┐
+          ▼           ▼           ▼
+       Products    Customers   Suppliers
+          │           │           │
+          └───────────┼───────────┘
+                      ▼
+                 Insights
