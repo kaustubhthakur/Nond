@@ -1,54 +1,71 @@
-NOND 
+NOND
+----
 
-It is a smart inventory management application built for small vendors ,It helps businesses like electronics, stationery, kirana, and other retail stores manage their inventory efficiently.
+NOND is a smart inventory management application designed for small
+vendors and retail businesses such as electronics stores, stationery
+shops, kirana stores, and other local businesses.
 
-                    VENDOR
-                      │
-                      ▼
-              Create Store Profile
-                      │
-                      ▼
-             Select Business Type
-       ┌──────────────┼──────────────┐
-       ▼              ▼              ▼
-    Grocery       Stationery       Mobile
-       │              │              │
-       └──────────────┼──────────────┘
-                      ▼
-                 Add Products
-                      │
-                      ▼
-             Organize Products
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-    Category       Brand         Supplier
-        │             │             │
-        └─────────────┼─────────────┘
-                      ▼
-                Manage Stock
-                      │
-          ┌───────────┼───────────┐
+It helps vendors manage products, stock, suppliers, customers, and
+transactions while building a connected representation of their
+business data through a Graph Engine.
+
+
+┌──────────────────────────────────────────────┐        ┌──────────────────────────────────────────────┐
+│              BUSINESS WORKFLOW               │        │                GRAPH ENGINE                  │
+└──────────────────────────────────────────────┘        └──────────────────────────────────────────────┘
+
+                    VENDOR                                             API REQUEST
+                      │                                                      │
+                      ▼                                                      ▼
+              Create Store Profile                                   ┌─────────────────┐
+                      │                                              │  Graph Engine   │
+                      ▼                                              └────────┬────────┘
+             Select Business Type                                             │
+                      │                                      ┌────────────────┼────────────────┐
+        ┌─────────────┼─────────────┐                        │                │                │
+        ▼             ▼             ▼                        ▼                ▼                ▼
+    Grocery       Stationery     Electronics              Parser           Indexer        Validator
+        │             │             │                        │                │                │
+        └─────────────┼─────────────┘                        └────────────────┼────────────────┘
+                      │                                                       │
+                      ▼                                                       ▼
+                Add Products                                        ┌─────────────────┐
+                      │                                             │ Graph Structure │
+                      ▼                                             └────────┬────────┘
+             Organize Products                                               │
+                      │                                      ┌────────────────┼────────────────┐
+        ┌─────────────┼─────────────┐                         ▼                ▼                ▼
+        ▼             ▼             ▼                  Store Nodes       Product Nodes    Category Nodes
+    Category        Brand        Supplier                    │                │                │
+        │             │             │                       └────────────────┼────────────────┘
+        └─────────────┼─────────────┘                                        │
+                      │                                                      ▼
+                      ▼                                              ┌─────────────────┐
+                Manage Stock                                         │ Storage Layer   │
+                      │                                              │   PostgreSQL    │
+          ┌───────────┼───────────┐                                  └─────────────────┘
           ▼                       ▼
-       Purchase                  Sale
+      Purchase                   Sale
           │                       │
           ▼                       ▼
       Supplier                 Customer
           │                       │
           └───────────┬───────────┘
-                      ▼
-                 Transaction
                       │
                       ▼
-               Business History
+                Transaction
                       │
                       ▼
-              Connected Business
-                  Information
+              Business History
+                      │
+                      ▼
+          Connected Business Information
                       │
           ┌───────────┼───────────┐
           ▼           ▼           ▼
-       Products    Customers   Suppliers
+       Products   Customers    Suppliers
           │           │           │
           └───────────┼───────────┘
+                      │
                       ▼
-                 Insights
+                   Insights
