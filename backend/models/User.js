@@ -269,9 +269,7 @@ exports.completeOnboarding = async (userId) => {
   return result.rows[0];
 };
 
-/* =========================
-   OTP
-========================= */
+
 
 exports.saveOtp = async (
   userId,
