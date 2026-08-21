@@ -7,65 +7,68 @@ shops, kirana stores, and other local businesses.
 
 It helps vendors manage products, stock, suppliers, customers, and
 transactions while building a connected representation of their
-business data through a Graph Engine.
+business data .
 
 
-┌──────────────────────────────────────────────┐        ┌──────────────────────────────────────────────┐
-│              BUSINESS WORKFLOW               │        │                GRAPH ENGINE                  │
-└──────────────────────────────────────────────┘        └──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    BUSINESS WORKFLOW                         │
+└──────────────────────────────────────────────────────────────┘
 
-                    VENDOR                                             API REQUEST
-                      │                                                      │
-                      ▼                                                      ▼
-              Create Store Profile                                   ┌─────────────────┐
-                      │                                              │  Graph Engine   │
-                      ▼                                              └────────┬────────┘
-             Select Business Type                                             │
-                      │                                      ┌────────────────┼────────────────┐
-        ┌─────────────┼─────────────┐                        │                │                │
-        ▼             ▼             ▼                        ▼                ▼                ▼
-    Grocery       Stationery     Electronics              Parser           Indexer        Validator
-        │             │             │                        │                │                │
-        └─────────────┼─────────────┘                        └────────────────┼────────────────┘
-                      │                                                       │
-                      ▼                                                       ▼
-                Add Products                                        ┌─────────────────┐
-                      │                                             │ Graph Structure │
-                      ▼                                             └────────┬────────┘
-             Organize Products                                               │
-                      │                                      ┌────────────────┼────────────────┐
-        ┌─────────────┼─────────────┐                         ▼                ▼                ▼
-        ▼             ▼             ▼                  Store Nodes       Product Nodes    Category Nodes
-    Category        Brand        Supplier                    │                │                │
-        │             │             │                       └────────────────┼────────────────┘
-        └─────────────┼─────────────┘                                        │
-                      │                                                      ▼
-                      ▼                                              ┌─────────────────┐
-                Manage Stock                                         │ Storage Layer   │
-                      │                                              │   PostgreSQL    │
-          ┌───────────┼───────────┐                                  └─────────────────┘
-          ▼                       ▼
-      Purchase                   Sale
-          │                       │
-          ▼                       ▼
-      Supplier                 Customer
-          │                       │
-          └───────────┬───────────┘
-                      │
-                      ▼
-                Transaction
-                      │
-                      ▼
-              Business History
-                      │
-                      ▼
-          Connected Business Information
-                      │
-          ┌───────────┼───────────┐
-          ▼           ▼           ▼
-       Products   Customers    Suppliers
-          │           │           │
-          └───────────┼───────────┘
-                      │
-                      ▼
-                   Insights
+                         VENDOR
+                           │
+                           ▼
+                  Create Account / Login
+                           │
+                           ▼
+                  Create Store Profile
+                           │
+                           ▼
+                 Select Business Type
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+      Grocery         Stationery       Electronics
+          │                │                │
+          └────────────────┼────────────────┘
+                           │
+                           ▼
+                    Add Products
+                           │
+                           ▼
+                  Organize Products
+                           │
+                           ▼
+                       Warehouse
+                           │
+                           ▼
+                         Shelf
+                           │
+                           ▼
+                       Sub-Shelf
+                           │
+                           ▼
+                          Box
+                           │
+                           ▼
+                    Product Storage
+                           │
+                           ▼
+                     Manage Stock
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+          Purchase        Sale      Adjustment
+              │            │            │
+              └────────────┼────────────┘
+                           ▼
+                      Transaction
+                           │
+                           ▼
+                    Business History
+                           │
+                           ▼
+                     Store Insights
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+       Inventory        Sales          Stock Status
