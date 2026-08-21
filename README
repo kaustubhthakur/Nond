@@ -108,37 +108,29 @@ business data .
 
 AI LAYER :-
 
-                BUSINESS DATA
-                       │
-                       ▼
-                ┌─────────────┐
-                │  AI LAYER   │
-                └──────┬──────┘
-                       │
-       ┌───────────────┼────────────────┐
-       ▼               ▼                ▼
-   Prediction       Detection        Analysis
-       │               │                │
-       ├─ Demand       ├─ Low Stock     ├─ Sales Trends
-       ├─ Stock-out    ├─ Dead Stock    ├─ Inventory Health
-       ├─ Storage      ├─ Anomalies     └─ Root Cause
-       └─ Expiry       └─ Risks
-       │
-       └───────────────┬────────────────┘
-                       ▼
-                RECOMMENDATIONS
-                       │
-                       ├─ What to reorder
-                       ├─ How much to reorder
-                       ├─ When to reorder
-                       └─ What needs attention
-                       │
-                       ▼
-                ┌──────────────┐
-                │   OUTPUT     │
-                └──────┬───────┘
-                       │
-             ┌─────────┼─────────┐
-             ▼         ▼         ▼
-          Dashboard  AI Chat  Firebase
-                              Notifications
+                 BUSINESS ACTIVITY
+                         │
+                         ▼
+                    TRANSACTIONS
+                         │
+                         ▼
+                  BUSINESS HISTORY
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+         MONTHLY REPORT          AI LAYER
+              │                     │
+              │             ┌───────┼────────┐
+              │             ▼       ▼        ▼
+              │         Analysis Prediction Recommendation
+              │             │       │        │
+              └─────────────┼───────┼────────┘
+                            ▼
+                    MONTHLY INSIGHTS
+                            │
+             ┌──────────────┼──────────────┐
+             ▼              ▼              ▼
+          Dashboard       PDF/Report   Notifications
+                            │
+                            ▼
+                         VENDOR
