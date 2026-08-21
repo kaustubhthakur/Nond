@@ -10,65 +10,135 @@ transactions while building a connected representation of their
 business data .
 
 
-┌──────────────────────────────────────────────────────────────┐
-│                    BUSINESS WORKFLOW                         │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                         BUSINESS WORKFLOW                        │
+└──────────────────────────────────────────────────────────────────┘
 
-                         VENDOR
-                           │
-                           ▼
-                  Create Account / Login
-                           │
-                           ▼
-                  Create Store Profile
-                           │
-                           ▼
-                 Select Business Type
-                           │
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-      Grocery         Stationery       Electronics
-          │                │                │
-          └────────────────┼────────────────┘
-                           │
-                           ▼
-                    Add Products
-                           │
-                           ▼
-                  Organize Products
-                           │
-                           ▼
-                       Warehouse
-                           │
-                           ▼
-                         Shelf
-                           │
-                           ▼
-                       Sub-Shelf
-                           │
-                           ▼
-                          Box
-                           │
-                           ▼
-                    Product Storage
-                           │
-                           ▼
-                     Manage Stock
-                           │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-          Purchase        Sale      Adjustment
-              │            │            │
-              └────────────┼────────────┘
-                           ▼
-                      Transaction
-                           │
-                           ▼
-                    Business History
-                           │
-                           ▼
-                     Store Insights
-                           │
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-       Inventory        Sales          Stock Status
+                              VENDOR
+                                │
+                                ▼
+                       Create Account / Login
+                                │
+                                ▼
+                       Create Store Profile
+                                │
+                                ▼
+                      Select Business Type
+                                │
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+          Grocery          Stationery        Electronics
+             │                  │                  │
+             └──────────────────┼──────────────────┘
+                                │
+                                ▼
+                         Add Products
+                                │
+                                ▼
+                       Organize Products
+                                │
+                                ▼
+                            Warehouse
+                                │
+                                ▼
+                             Shelf
+                                │
+                                ▼
+                           Sub-Shelf
+                                │
+                                ▼
+                             Box
+                                │
+                                ▼
+                       Product Storage
+                                │
+                                ▼
+                         Manage Stock
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+          Purchase             Sale          Adjustment
+              │                 │                 │
+              └─────────────────┼─────────────────┘
+                                │
+                                ▼
+                           Transaction
+                                │
+                                ▼
+                        Business History
+                                │
+                                ▼
+                         Store Insights
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+          Inventory           Sales          Stock Status
+              │                 │                 │
+              └─────────────────┼─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │    AI LAYER     │
+                       └────────┬────────┘
+                                │
+                                ▼
+                       AI Analysis / Result
+                                │
+                 ┌──────────────┼──────────────┐
+                 ▼              ▼              ▼
+              Insights     Recommendations   Alerts
+                 │              │              │
+                 └──────────────┼──────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   APPLICATION   │
+                       └────────┬────────┘
+                                │
+                    ┌───────────┼───────────┐
+                    ▼           ▼           ▼
+                 Dashboard   Reports    Notifications
+                                            │
+                                            ▼
+                                      Firebase Push
+
+
+                                                   
+            
+
+AI LAYER :-
+
+                BUSINESS DATA
+                       │
+                       ▼
+                ┌─────────────┐
+                │  AI LAYER   │
+                └──────┬──────┘
+                       │
+       ┌───────────────┼────────────────┐
+       ▼               ▼                ▼
+   Prediction       Detection        Analysis
+       │               │                │
+       ├─ Demand       ├─ Low Stock     ├─ Sales Trends
+       ├─ Stock-out    ├─ Dead Stock    ├─ Inventory Health
+       ├─ Storage      ├─ Anomalies     └─ Root Cause
+       └─ Expiry       └─ Risks
+       │
+       └───────────────┬────────────────┘
+                       ▼
+                RECOMMENDATIONS
+                       │
+                       ├─ What to reorder
+                       ├─ How much to reorder
+                       ├─ When to reorder
+                       └─ What needs attention
+                       │
+                       ▼
+                ┌──────────────┐
+                │   OUTPUT     │
+                └──────┬───────┘
+                       │
+             ┌─────────┼─────────┐
+             ▼         ▼         ▼
+          Dashboard  AI Chat  Firebase
+                              Notifications
