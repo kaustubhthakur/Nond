@@ -54,8 +54,7 @@ const register = async (req, res) => {
 
     if (!username || !email || !password) {
       return res.status(400).json({
-        error:
-          "Username, email and password are required",
+        error: "Username, email and password are required",
       });
     }
 

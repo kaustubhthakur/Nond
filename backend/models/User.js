@@ -14,7 +14,6 @@ exports.createUser = async ({
       password,
       phone,
       avatar,
-      is_online,
       email_verified,
       phone_verified,
       onboarding_completed
@@ -27,7 +26,6 @@ exports.createUser = async ({
       NULL,
       FALSE,
       FALSE,
-      FALSE,
       FALSE
     )
     RETURNING
@@ -36,7 +34,6 @@ exports.createUser = async ({
       email,
       phone,
       avatar,
-      is_online,
       email_verified,
       phone_verified,
       onboarding_completed,
@@ -109,7 +106,6 @@ exports.getUser = async (id) => {
       email,
       phone,
       avatar,
-      is_online,
       email_verified,
       phone_verified,
       onboarding_completed,
@@ -132,7 +128,6 @@ exports.getAllUsers = async () => {
       email,
       phone,
       avatar,
-      is_online,
       email_verified,
       phone_verified,
       onboarding_completed,
@@ -167,40 +162,12 @@ exports.updateUser = async (
       email,
       phone,
       avatar,
-      is_online,
       email_verified,
       phone_verified,
       onboarding_completed,
       created_at
     `,
     [username, avatar, phone, id]
-  );
-
-  return result.rows[0];
-};
-
-exports.updateOnlineStatus = async (
-  userId,
-  isOnline
-) => {
-  const result = await pool.query(
-    `
-    UPDATE users
-    SET is_online = $1
-    WHERE id = $2
-    RETURNING
-      id,
-      username,
-      email,
-      phone,
-      avatar,
-      is_online,
-      email_verified,
-      phone_verified,
-      onboarding_completed,
-      created_at
-    `,
-    [isOnline, userId]
   );
 
   return result.rows[0];
@@ -268,8 +235,6 @@ exports.completeOnboarding = async (userId) => {
 
   return result.rows[0];
 };
-
-
 
 exports.saveOtp = async (
   userId,
