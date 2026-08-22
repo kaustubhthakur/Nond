@@ -1,26 +1,77 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #fbfaf7;
+  background-image: linear-gradient(
+      to right,
+      rgba(20, 24, 27, 0.035) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(20, 24, 27, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: #14181b;
+}
+
+::selection {
+  background: #2c5f4a;
+  color: #fbfaf7;
+}
+
+.ledger-card {
+  background: #fffdf8;
+  border: 1px solid #e4e1d8;
+  box-shadow: 0 1px 0 #e4e1d8, 0 18px 40px -24px rgba(20, 24, 27, 0.35);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6b7a72;
+}
+
+.field-underline {
+  border: none;
+  border-bottom: 1px solid #cfc9b8;
+  background: transparent;
+  border-radius: 0;
+  transition: border-color 150ms ease;
+}
+.field-underline:focus {
+  outline: none;
+  border-bottom-color: #2c5f4a;
+}
+
+.stamp-ready {
+  animation: stamp 320ms ease-out;
+}
+
+@keyframes stamp {
+  0% {
+    transform: scale(1.4) rotate(-6deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.95) rotate(-2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp-ready {
+    animation: none;
+  }
 }
