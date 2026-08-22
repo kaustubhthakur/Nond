@@ -89,7 +89,7 @@ exports.createStore = async ({
   return result.rows[0];
 };
 
-exports.getStoreByUserId = async (userId) => {
+exports.getStoresByUserId = async (userId) => {
   const result = await pool.query(
     `
     SELECT
@@ -111,9 +111,40 @@ exports.getStoreByUserId = async (userId) => {
       created_at
     FROM stores
     WHERE user_id = $1
-    LIMIT 1
+    ORDER BY created_at DESC
     `,
     [userId]
+  );
+
+  return result.rows;
+};
+
+exports.getStoreById = async (storeId, userId) => {
+  const result = await pool.query(
+    `
+    SELECT
+      id,
+      user_id,
+      store_name,
+      business_type,
+      business_type_custom,
+      business_category,
+      business_category_custom,
+      address,
+      city,
+      state,
+      country,
+      pincode,
+      language,
+      currency,
+      timezone,
+      created_at
+    FROM stores
+    WHERE id = $1
+      AND user_id = $2
+    LIMIT 1
+    `,
+    [storeId, userId]
   );
 
   return result.rows[0];
@@ -121,6 +152,7 @@ exports.getStoreByUserId = async (userId) => {
 
 exports.updateStore = async (
   storeId,
+  userId,
   {
     storeName,
     businessType,
@@ -155,6 +187,7 @@ exports.updateStore = async (
       currency = COALESCE($12, currency),
       timezone = COALESCE($13, timezone)
     WHERE id = $14
+      AND user_id = $15
     RETURNING
       id,
       user_id,
@@ -188,20 +221,22 @@ exports.updateStore = async (
       currency,
       timezone,
       storeId,
+      userId,
     ]
   );
 
   return result.rows[0];
 };
 
-exports.deleteStore = async (storeId) => {
+exports.deleteStore = async (storeId, userId) => {
   const result = await pool.query(
     `
     DELETE FROM stores
     WHERE id = $1
+      AND user_id = $2
     RETURNING id
     `,
-    [storeId]
+    [storeId, userId]
   );
 
   return result.rows[0];

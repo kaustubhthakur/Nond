@@ -1,4 +1,4 @@
-const Store = require("../models/storeModel");
+const Store = require("../models/Store");
 
 const BUSINESS_TYPES = [
   "retail",
@@ -108,28 +108,25 @@ exports.createStore = async (req, res) => {
       });
     }
 
-    const existingStore = await Store.getStoreByUserId(userId);
-
-    if (existingStore) {
-      return res.status(409).json({
-        error: "Store already exists",
-        store: existingStore,
-      });
-    }
-
     const store = await Store.createStore({
       userId,
+
       storeName: storeName.trim(),
+
       businessType,
+
       businessTypeCustom:
         businessType === "other"
           ? businessTypeCustom.trim()
           : null,
+
       businessCategory,
+
       businessCategoryCustom:
         businessCategory === "other"
           ? businessCategoryCustom.trim()
           : null,
+
       address,
       city,
       state,
@@ -154,11 +151,34 @@ exports.createStore = async (req, res) => {
   }
 };
 
-exports.getMyStore = async (req, res) => {
+exports.getMyStores = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const store = await Store.getStoreByUserId(userId);
+    const stores = await Store.getStoresByUserId(userId);
+
+    return res.status(200).json({
+      success: true,
+      stores,
+    });
+  } catch (err) {
+    console.error("Get stores error:", err);
+
+    return res.status(500).json({
+      error: "Failed to get stores",
+    });
+  }
+};
+
+exports.getStore = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { storeId } = req.params;
+
+    const store = await Store.getStoreById(
+      storeId,
+      userId
+    );
 
     if (!store) {
       return res.status(404).json({
@@ -182,8 +202,12 @@ exports.getMyStore = async (req, res) => {
 exports.updateStore = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { storeId } = req.params;
 
-    const existingStore = await Store.getStoreByUserId(userId);
+    const existingStore = await Store.getStoreById(
+      storeId,
+      userId
+    );
 
     if (!existingStore) {
       return res.status(404).json({
@@ -215,7 +239,8 @@ exports.updateStore = async (req, res) => {
       existingStore.business_type_custom;
 
     const finalBusinessCategory =
-      businessCategory ?? existingStore.business_category;
+      businessCategory ??
+      existingStore.business_category;
 
     const finalBusinessCategoryCustom =
       businessCategoryCustom ??
@@ -234,35 +259,39 @@ exports.updateStore = async (req, res) => {
       });
     }
 
-    const store = await Store.updateStore(existingStore.id, {
-      storeName:
-        storeName !== undefined
-          ? storeName.trim()
-          : undefined,
+    const store = await Store.updateStore(
+      storeId,
+      userId,
+      {
+        storeName:
+          storeName !== undefined
+            ? storeName.trim()
+            : undefined,
 
-      businessType: finalBusinessType,
+        businessType: finalBusinessType,
 
-      businessTypeCustom:
-        finalBusinessType === "other"
-          ? finalBusinessTypeCustom?.trim()
-          : null,
+        businessTypeCustom:
+          finalBusinessType === "other"
+            ? finalBusinessTypeCustom?.trim()
+            : null,
 
-      businessCategory: finalBusinessCategory,
+        businessCategory: finalBusinessCategory,
 
-      businessCategoryCustom:
-        finalBusinessCategory === "other"
-          ? finalBusinessCategoryCustom?.trim()
-          : null,
+        businessCategoryCustom:
+          finalBusinessCategory === "other"
+            ? finalBusinessCategoryCustom?.trim()
+            : null,
 
-      address,
-      city,
-      state,
-      country,
-      pincode,
-      language,
-      currency,
-      timezone,
-    });
+        address,
+        city,
+        state,
+        country,
+        pincode,
+        language,
+        currency,
+        timezone,
+      }
+    );
 
     return res.status(200).json({
       success: true,
@@ -281,16 +310,18 @@ exports.updateStore = async (req, res) => {
 exports.deleteStore = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { storeId } = req.params;
 
-    const existingStore = await Store.getStoreByUserId(userId);
+    const store = await Store.deleteStore(
+      storeId,
+      userId
+    );
 
-    if (!existingStore) {
+    if (!store) {
       return res.status(404).json({
         error: "Store not found",
       });
     }
-
-    await Store.deleteStore(existingStore.id);
 
     return res.status(200).json({
       success: true,
