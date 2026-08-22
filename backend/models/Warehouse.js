@@ -1,4 +1,4 @@
-const { db } = require("../firebase/firebase");
+const { db } = require("../firebase");
 
 const getWarehousesRef = (storeId) => {
   return db
