@@ -1,0 +1,688 @@
+const Box = require("../models/Box");
+const Store = require("../models/Store");
+const Warehouse = require("../models/Warehouse");
+const Shelf = require("../models/Shelf");
+const SubShelf = require("../models/SubShelf");
+
+const MAX_PRODUCTS = 25;
+
+const getStoreForUser = async (
+  userId,
+  storeId
+) => {
+  return await Store.getStoreById(
+    storeId,
+    userId
+  );
+};
+
+const validateHierarchy = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId
+) => {
+  const warehouse =
+    await Warehouse.getWarehouse(
+      storeId,
+      warehouseId
+    );
+
+  if (!warehouse) {
+    return {
+      error: "Warehouse not found",
+      status: 404,
+    };
+  }
+
+  const shelf =
+    await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
+
+  if (!shelf) {
+    return {
+      error: "Shelf not found",
+      status: 404,
+    };
+  }
+
+  const subShelf =
+    await SubShelf.getSubShelf(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    );
+
+  if (!subShelf) {
+    return {
+      error: "Sub-shelf not found",
+      status: 404,
+    };
+  }
+
+  return {
+    warehouse,
+    shelf,
+    subShelf,
+  };
+};
+
+const validateName = (name) => {
+  if (
+    typeof name !== "string" ||
+    !name.trim()
+  ) {
+    return "Box name is required";
+  }
+
+  if (name.trim().length > 100) {
+    return "Box name cannot exceed 100 characters";
+  }
+
+  return null;
+};
+
+const validateDescription = (
+  description
+) => {
+  if (
+    description !== undefined &&
+    description !== null &&
+    typeof description !== "string"
+  ) {
+    return "Description must be a string";
+  }
+
+  if (
+    description &&
+    description.length > 500
+  ) {
+    return "Description cannot exceed 500 characters";
+  }
+
+  return null;
+};
+
+exports.createBox = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+    } = req.params;
+
+    const {
+      name,
+      description,
+    } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and sub-shelf ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const nameError =
+      validateName(name);
+
+    if (nameError) {
+      return res.status(400).json({
+        error: nameError,
+      });
+    }
+
+    const descriptionError =
+      validateDescription(
+        description
+      );
+
+    if (descriptionError) {
+      return res.status(400).json({
+        error: descriptionError,
+      });
+    }
+
+    const existing =
+      await Box.getBoxes(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (existing.length >= 5) {
+      return res.status(409).json({
+        error:
+          "Sub-shelf has reached maximum of 5 boxes",
+
+        maxBoxes: 5,
+
+        currentBoxes:
+          existing.length,
+
+        availableBoxes: 0,
+      });
+    }
+
+    const box =
+      await Box.createBox({
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+
+        name: name.trim(),
+
+        description:
+          description !== undefined
+            ? description.trim()
+            : null,
+      });
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Box created successfully",
+      box,
+    });
+  } catch (err) {
+    console.error(
+      "Create box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to create box",
+    });
+  }
+};
+
+exports.getBoxes = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and sub-shelf ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const boxes =
+      await Box.getBoxes(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    return res.status(200).json({
+      success: true,
+
+      count: boxes.length,
+
+      maxBoxes: 5,
+
+      availableBoxes:
+        Math.max(
+          0,
+          5 - boxes.length
+        ),
+
+      productsPerBox:
+        MAX_PRODUCTS,
+
+      boxes,
+    });
+  } catch (err) {
+    console.error(
+      "Get boxes error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get boxes",
+    });
+  }
+};
+
+exports.getBox = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID and box ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const box =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!box) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      box,
+    });
+  } catch (err) {
+    console.error(
+      "Get box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get box",
+    });
+  }
+};
+
+exports.updateBox = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+    } = req.params;
+
+    const {
+      name,
+      description,
+    } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID and box ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const existing =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!existing) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    if (name !== undefined) {
+      const nameError =
+        validateName(name);
+
+      if (nameError) {
+        return res.status(400).json({
+          error: nameError,
+        });
+      }
+    }
+
+    const descriptionError =
+      validateDescription(
+        description
+      );
+
+    if (descriptionError) {
+      return res.status(400).json({
+        error: descriptionError,
+      });
+    }
+
+    const box =
+      await Box.updateBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId,
+        {
+          name:
+            name !== undefined
+              ? name.trim()
+              : undefined,
+
+          description:
+            description !== undefined
+              ? description.trim()
+              : undefined,
+        }
+      );
+
+    if (!box) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Box updated successfully",
+      box,
+    });
+  } catch (err) {
+    console.error(
+      "Update box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to update box",
+    });
+  }
+};
+
+exports.deleteBox = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID and box ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const existing =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!existing) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    await Box.deleteBox(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Box and all products inside it deleted successfully",
+    });
+  } catch (err) {
+    console.error(
+      "Delete box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to delete box",
+    });
+  }
+};
+
+exports.getBoxOptions = async (
+  req,
+  res
+) => {
+  return res.status(200).json({
+    success: true,
+
+    maxBoxesPerSubShelf: 5,
+
+    maxProductsPerBox:
+      MAX_PRODUCTS,
+  });
+};
