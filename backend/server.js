@@ -10,6 +10,7 @@ const authrouter = require('./routes/auth')
 const userrouter = require('./routes/users')
 const storerouter = require('./routes/stores')
 const warehouserouter = require('./routes/warehouses')
+const shelfrouter = require('./routes/shelfs')
 
 app.use(cors({origin: process.env.FRONTEND_URL || "http://localhost:3000",credentials: true, }));
 app.use(express.json());
