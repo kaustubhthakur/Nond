@@ -1,11 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --font-display: "Fraunces", serif;
-  --font-body: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+@theme {
+  --color-ink: #14181b;
+  --color-paper: #fbfaf7;
+  --color-line: #e4e1d8;
+  --color-accent: #2c5f4a;
+  --color-accent-dim: #3e7a61;
+  --color-rust: #b4532a;
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 body {
