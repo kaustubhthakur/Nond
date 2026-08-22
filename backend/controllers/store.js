@@ -1,5 +1,5 @@
 const Store = require("../models/Store");
-
+const { db } = require("../firebase");
 const BUSINESS_TYPES = [
   "retail",
   "wholesale",
@@ -312,6 +312,35 @@ exports.deleteStore = async (req, res) => {
     const userId = req.user.id;
     const { storeId } = req.params;
 
+    if (!storeId) {
+      return res.status(400).json({
+        error: "Store ID is required",
+      });
+    }
+
+    const existingStore = await Store.getStoreById(
+      storeId,
+      userId
+    );
+
+    if (!existingStore) {
+      return res.status(404).json({
+        error: "Store not found",
+      });
+    }
+
+    const firebaseStoreRef = db
+      .collection("stores")
+      .doc(String(storeId));
+
+    const firebaseStore = await firebaseStoreRef.get();
+
+    if (firebaseStore.exists) {
+      await db.recursiveDelete(
+        firebaseStoreRef
+      );
+    }
+
     const store = await Store.deleteStore(
       storeId,
       userId
@@ -325,13 +354,18 @@ exports.deleteStore = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Store deleted successfully",
+      message:
+        "Store and all associated data deleted successfully",
     });
   } catch (err) {
-    console.error("Delete store error:", err);
+    console.error(
+      "Delete store error:",
+      err
+    );
 
     return res.status(500).json({
-      error: "Failed to delete store",
+      error:
+        "Failed to delete store",
     });
   }
 };
