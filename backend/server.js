@@ -12,6 +12,7 @@ const storerouter = require('./routes/stores')
 const warehouserouter = require('./routes/warehouses')
 const shelfrouter = require('./routes/shelfs')
 const subshelfrouter = require('./routes/subshelf')
+const boxrouter = require('./routes/box');
 
 app.use(cors({origin: process.env.FRONTEND_URL || "http://localhost:3000",credentials: true, }));
 app.use(express.json());
@@ -22,6 +23,7 @@ app.use('/store',storerouter);
 app.use('/warehouse',warehouserouter)
 app.use('/subshelf',shelfrouter)
 app.use('/subshelf',subshelfrouter)
+app.use('./box',boxrouter);
 const server = http.createServer(app);
 
 server.listen(PORT, () => {console.log(`Server running on port ${PORT}...`);});
