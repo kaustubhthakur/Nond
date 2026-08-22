@@ -4,6 +4,12 @@ const getUser = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (req.user.id !== id) {
+      return res.status(403).json({
+        error: "You are not authorized to access this user",
+      });
+    }
+
     const user = await User.getUser(id);
 
     if (!user) {
@@ -17,10 +23,10 @@ const getUser = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Get user error:", err);
 
     return res.status(500).json({
-      error: err.message,
+      error: "Failed to get user",
     });
   }
 };
@@ -34,10 +40,10 @@ const getAllUsers = async (req, res) => {
       users,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Get all users error:", err);
 
     return res.status(500).json({
-      error: err.message,
+      error: "Failed to get users",
     });
   }
 };
@@ -46,14 +52,32 @@ const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (req.user.id !== id) {
+      return res.status(403).json({
+        error: "You are not authorized to update this user",
+      });
+    }
+
     const {
       username,
       avatar,
       phone,
     } = req.body;
 
+    if (
+      username !== undefined &&
+      (!username || !username.trim())
+    ) {
+      return res.status(400).json({
+        error: "Username cannot be empty",
+      });
+    }
+
     const user = await User.updateUser(id, {
-      username,
+      username:
+        username !== undefined
+          ? username.trim()
+          : undefined,
       avatar,
       phone,
     });
@@ -66,14 +90,14 @@ const updateUser = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "User updated successfully",
+      message: "Profile updated successfully",
       user,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Update user error:", err);
 
     return res.status(500).json({
-      error: err.message,
+      error: "Failed to update profile",
     });
   }
 };
@@ -82,8 +106,13 @@ const completeOnboarding = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user =
-      await User.completeOnboarding(id);
+    if (req.user.id !== id) {
+      return res.status(403).json({
+        error: "You are not authorized to complete onboarding for this user",
+      });
+    }
+
+    const user = await User.completeOnboarding(id);
 
     if (!user) {
       return res.status(404).json({
@@ -97,10 +126,10 @@ const completeOnboarding = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Complete onboarding error:", err);
 
     return res.status(500).json({
-      error: err.message,
+      error: "Failed to complete onboarding",
     });
   }
 };
