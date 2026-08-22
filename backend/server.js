@@ -9,6 +9,7 @@ const path = require("path");
 const authrouter = require('./routes/auth')
 const userrouter = require('./routes/users')
 const storerouter = require('./routes/stores')
+const warehouserouter = require('./routes/warehouses')
 
 app.use(cors({origin: process.env.FRONTEND_URL || "http://localhost:3000",credentials: true, }));
 app.use(express.json());
@@ -16,6 +17,7 @@ app.use(cookieParser());
 app.use('/auth',authrouter);
 app.use('/user',userrouter);
 app.use('/store',storerouter);
+app.use('/warehouse',warehouserouter)
 const server = http.createServer(app);
 
 server.listen(PORT, () => {console.log(`Server running on port ${PORT}...`);});
