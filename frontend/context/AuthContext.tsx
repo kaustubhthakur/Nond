@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken);
       }
     } catch {
-      // ignore malformed storage
     } finally {
       setIsLoading(false);
     }
