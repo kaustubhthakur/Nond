@@ -1,5 +1,14 @@
 const { db } = require("../firebase");
 
+const WAREHOUSE_SHELF_OPTIONS = [
+  15,
+  25,
+  40,
+  60,
+  80,
+  100,
+];
+
 const getWarehousesRef = (storeId) => {
   return db
     .collection("stores")
@@ -12,15 +21,28 @@ exports.createWarehouse = async ({
   name,
   description,
   address,
+  shelfCapacity,
 }) => {
+  if (!WAREHOUSE_SHELF_OPTIONS.includes(shelfCapacity)) {
+    throw new Error("Invalid warehouse shelf capacity");
+  }
+
   const warehouseRef = getWarehousesRef(storeId).doc();
 
   const warehouse = {
     id: warehouseRef.id,
     storeId: String(storeId),
+
     name,
     description: description || null,
     address: address || null,
+
+    shelfCapacity,
+
+    maxSubShelvesPerShelf: 10,
+    maxBoxesPerSubShelf: 5,
+    maxProductsPerBox: 25,
+
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -121,5 +143,14 @@ exports.deleteWarehouse = async (
 
   return {
     id: warehouseId,
+  };
+};
+
+exports.getWarehouseOptions = () => {
+  return {
+    shelfCapacityOptions: WAREHOUSE_SHELF_OPTIONS,
+    maxSubShelvesPerShelf: 10,
+    maxBoxesPerSubShelf: 5,
+    maxProductsPerBox: 25,
   };
 };

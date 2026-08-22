@@ -1,6 +1,12 @@
 const { db } = require("../firebase");
 
-const getShelvesRef = (storeId, warehouseId) => {
+const MAX_SUBSHELVES = 10;
+const MAX_PRODUCTS = 1250;
+
+const getShelvesRef = (
+  storeId,
+  warehouseId
+) => {
   return db
     .collection("stores")
     .doc(String(storeId))
@@ -15,17 +21,50 @@ exports.createShelf = async ({
   name,
   description,
 }) => {
-  const shelfRef = getShelvesRef(
+  const shelvesRef = getShelvesRef(
     storeId,
     warehouseId
-  ).doc();
+  );
+
+  const existing = await shelvesRef.get();
+
+  const warehouseRef = db
+    .collection("stores")
+    .doc(String(storeId))
+    .collection("warehouses")
+    .doc(String(warehouseId));
+
+  const warehouse = await warehouseRef.get();
+
+  if (!warehouse.exists) {
+    throw new Error("Warehouse not found");
+  }
+
+  const warehouseData = warehouse.data();
+
+  if (existing.size >= warehouseData.shelfCapacity) {
+    throw new Error(
+      "Warehouse has reached its maximum shelf capacity"
+    );
+  }
+
+  const shelfRef = shelvesRef.doc();
 
   const shelf = {
     id: shelfRef.id,
+
     storeId: String(storeId),
     warehouseId: String(warehouseId),
+
     name,
     description: description || null,
+
+    maxSubShelves: MAX_SUBSHELVES,
+
+    productQuantity: 0,
+    capacity: MAX_PRODUCTS,
+    availableCapacity: MAX_PRODUCTS,
+
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -108,11 +147,11 @@ exports.updateShelf = async (
 
   await shelfRef.update(updates);
 
-  const updatedDoc = await shelfRef.get();
+  const updated = await shelfRef.get();
 
   return {
-    id: updatedDoc.id,
-    ...updatedDoc.data(),
+    id: updated.id,
+    ...updated.data(),
   };
 };
 

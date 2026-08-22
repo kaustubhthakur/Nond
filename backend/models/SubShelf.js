@@ -1,5 +1,8 @@
 const { db } = require("../firebase");
 
+const MAX_BOXES = 5;
+const MAX_PRODUCTS = 125;
+
 const getSubShelvesRef = (
   storeId,
   warehouseId,
@@ -22,19 +25,38 @@ exports.createSubShelf = async ({
   name,
   description,
 }) => {
-  const subShelfRef = getSubShelvesRef(
+  const subShelvesRef = getSubShelvesRef(
     storeId,
     warehouseId,
     shelfId
-  ).doc();
+  );
+
+  const existing = await subShelvesRef.get();
+
+  if (existing.size >= 10) {
+    throw new Error(
+      "Shelf has reached maximum of 10 sub-shelves"
+    );
+  }
+
+  const subShelfRef = subShelvesRef.doc();
 
   const subShelf = {
     id: subShelfRef.id,
+
     storeId: String(storeId),
     warehouseId: String(warehouseId),
     shelfId: String(shelfId),
+
     name,
     description: description || null,
+
+    maxBoxes: MAX_BOXES,
+
+    productQuantity: 0,
+    capacity: MAX_PRODUCTS,
+    availableCapacity: MAX_PRODUCTS,
+
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -123,11 +145,11 @@ exports.updateSubShelf = async (
 
   await subShelfRef.update(updates);
 
-  const updatedDoc = await subShelfRef.get();
+  const updated = await subShelfRef.get();
 
   return {
-    id: updatedDoc.id,
-    ...updatedDoc.data(),
+    id: updated.id,
+    ...updated.data(),
   };
 };
 
