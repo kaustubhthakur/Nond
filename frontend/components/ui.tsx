@@ -103,11 +103,8 @@ export function FootLink({
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
-      <p className="font-display italic text-lg text-ink/70 mb-8 tracking-wide">
-        Ledger
-      </p>
+    <div className="flex-1 w-full flex flex-col items-center justify-center px-4 py-16">
       {children}
-    </main>
+    </div>
   );
 }
