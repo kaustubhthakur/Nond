@@ -1,47 +1,58 @@
 const { db } = require("../firebase");
 
-const getShelvesRef = (storeId, warehouseId) => {
+const getSubShelvesRef = (
+  storeId,
+  warehouseId,
+  shelfId
+) => {
   return db
     .collection("stores")
     .doc(String(storeId))
     .collection("warehouses")
     .doc(String(warehouseId))
-    .collection("shelves");
+    .collection("shelves")
+    .doc(String(shelfId))
+    .collection("subShelves");
 };
 
-exports.createShelf = async ({
+exports.createSubShelf = async ({
   storeId,
   warehouseId,
+  shelfId,
   name,
   description,
 }) => {
-  const shelfRef = getShelvesRef(
+  const subShelfRef = getSubShelvesRef(
     storeId,
-    warehouseId
+    warehouseId,
+    shelfId
   ).doc();
 
-  const shelf = {
-    id: shelfRef.id,
+  const subShelf = {
+    id: subShelfRef.id,
     storeId: String(storeId),
     warehouseId: String(warehouseId),
+    shelfId: String(shelfId),
     name,
     description: description || null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  await shelfRef.set(shelf);
+  await subShelfRef.set(subShelf);
 
-  return shelf;
+  return subShelf;
 };
 
-exports.getShelves = async (
+exports.getSubShelves = async (
   storeId,
-  warehouseId
+  warehouseId,
+  shelfId
 ) => {
-  const snapshot = await getShelvesRef(
+  const snapshot = await getSubShelvesRef(
     storeId,
-    warehouseId
+    warehouseId,
+    shelfId
   )
     .orderBy("createdAt", "desc")
     .get();
@@ -52,17 +63,19 @@ exports.getShelves = async (
   }));
 };
 
-exports.getShelf = async (
+exports.getSubShelf = async (
   storeId,
   warehouseId,
-  shelfId
+  shelfId,
+  subShelfId
 ) => {
-  const shelfRef = getShelvesRef(
+  const subShelfRef = getSubShelvesRef(
     storeId,
-    warehouseId
-  ).doc(String(shelfId));
+    warehouseId,
+    shelfId
+  ).doc(String(subShelfId));
 
-  const doc = await shelfRef.get();
+  const doc = await subShelfRef.get();
 
   if (!doc.exists) {
     return null;
@@ -74,21 +87,23 @@ exports.getShelf = async (
   };
 };
 
-exports.updateShelf = async (
+exports.updateSubShelf = async (
   storeId,
   warehouseId,
   shelfId,
+  subShelfId,
   {
     name,
     description,
   }
 ) => {
-  const shelfRef = getShelvesRef(
+  const subShelfRef = getSubShelvesRef(
     storeId,
-    warehouseId
-  ).doc(String(shelfId));
+    warehouseId,
+    shelfId
+  ).doc(String(subShelfId));
 
-  const doc = await shelfRef.get();
+  const doc = await subShelfRef.get();
 
   if (!doc.exists) {
     return null;
@@ -106,9 +121,9 @@ exports.updateShelf = async (
     updates.description = description;
   }
 
-  await shelfRef.update(updates);
+  await subShelfRef.update(updates);
 
-  const updatedDoc = await shelfRef.get();
+  const updatedDoc = await subShelfRef.get();
 
   return {
     id: updatedDoc.id,
@@ -116,25 +131,27 @@ exports.updateShelf = async (
   };
 };
 
-exports.deleteShelf = async (
+exports.deleteSubShelf = async (
   storeId,
   warehouseId,
-  shelfId
+  shelfId,
+  subShelfId
 ) => {
-  const shelfRef = getShelvesRef(
+  const subShelfRef = getSubShelvesRef(
     storeId,
-    warehouseId
-  ).doc(String(shelfId));
+    warehouseId,
+    shelfId
+  ).doc(String(subShelfId));
 
-  const doc = await shelfRef.get();
+  const doc = await subShelfRef.get();
 
   if (!doc.exists) {
     return null;
   }
 
-  await db.recursiveDelete(shelfRef);
+  await db.recursiveDelete(subShelfRef);
 
   return {
-    id: shelfId,
+    id: subShelfId,
   };
 };

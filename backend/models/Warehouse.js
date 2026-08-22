@@ -13,9 +13,7 @@ exports.createWarehouse = async ({
   description,
   address,
 }) => {
-  const warehousesRef = getWarehousesRef(storeId);
-
-  const warehouseRef = warehousesRef.doc();
+  const warehouseRef = getWarehousesRef(storeId).doc();
 
   const warehouse = {
     id: warehouseRef.id,
@@ -32,7 +30,7 @@ exports.createWarehouse = async ({
   return warehouse;
 };
 
-exports.getWarehousesByStoreId = async (storeId) => {
+exports.getWarehouses = async (storeId) => {
   const snapshot = await getWarehousesRef(storeId)
     .orderBy("createdAt", "desc")
     .get();
@@ -43,12 +41,12 @@ exports.getWarehousesByStoreId = async (storeId) => {
   }));
 };
 
-exports.getWarehouseById = async (
+exports.getWarehouse = async (
   storeId,
   warehouseId
 ) => {
   const warehouseRef = getWarehousesRef(storeId)
-    .doc(warehouseId);
+    .doc(String(warehouseId));
 
   const doc = await warehouseRef.get();
 
@@ -72,7 +70,7 @@ exports.updateWarehouse = async (
   }
 ) => {
   const warehouseRef = getWarehousesRef(storeId)
-    .doc(warehouseId);
+    .doc(String(warehouseId));
 
   const doc = await warehouseRef.get();
 
@@ -98,11 +96,11 @@ exports.updateWarehouse = async (
 
   await warehouseRef.update(updates);
 
-  const updatedDoc = await warehouseRef.get();
+  const updated = await warehouseRef.get();
 
   return {
-    id: updatedDoc.id,
-    ...updatedDoc.data(),
+    id: updated.id,
+    ...updated.data(),
   };
 };
 
@@ -111,7 +109,7 @@ exports.deleteWarehouse = async (
   warehouseId
 ) => {
   const warehouseRef = getWarehousesRef(storeId)
-    .doc(warehouseId);
+    .doc(String(warehouseId));
 
   const doc = await warehouseRef.get();
 
@@ -119,7 +117,7 @@ exports.deleteWarehouse = async (
     return null;
   }
 
-  await warehouseRef.delete();
+  await db.recursiveDelete(warehouseRef);
 
   return {
     id: warehouseId,
