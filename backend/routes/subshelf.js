@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const verifyToken = require("../middleware/auth");
+const verifyToken = require("../middlewares/auth");
 
 const {
   createSubShelf,
@@ -11,7 +11,7 @@ const {
   updateSubShelf,
   deleteSubShelf,
   getSubShelfOptions,
-} = require("../controllers/subshelf");
+} = require("../controllers/subshelfs");
 
 router.get(
   "/options",

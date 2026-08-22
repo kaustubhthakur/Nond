@@ -9,9 +9,9 @@ const {
   updateStore,
   deleteStore,
   getBusinessOptions,
-} = require("../controllers/stores");
+} = require("../controllers/store");
 
-const verifyToken = require("../middleware/verifyToken");
+const verifyToken = require("../middlewares/auth");
 
 router.get("/options", verifyToken, getBusinessOptions);
 
