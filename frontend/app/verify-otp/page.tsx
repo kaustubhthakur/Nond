@@ -46,7 +46,7 @@ function VerifyOtpForm() {
       const res = await authApi.verifyOtp({ userId, otp: code, method });
       setSession(res.user, res.token);
       setStamped(true);
-    setTimeout(() => router.push("/onboarding"), 450);
+   setTimeout(() => router.push("/onboarding"), 450);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Verification failed.");
       setOtp("");

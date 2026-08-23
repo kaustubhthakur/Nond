@@ -11,7 +11,7 @@ import {
 } from "@/types/auth";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/auth";
+  process.env.NEXT_PUBLIC_API_URLL ?? "http://localhost:8081/auth";
 
 async function request<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
