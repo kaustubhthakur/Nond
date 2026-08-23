@@ -39,10 +39,9 @@ export default function PreferencesStep({ onboarding }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-xl text-[var(--onb-ink)]">
-          A few defaults
-        </h2>
-        <p className="mt-1 text-sm text-[var(--onb-muted)]">
+        <p className="eyebrow mb-2">Step four</p>
+        <h2 className="font-display text-xl text-ink">A few defaults</h2>
+        <p className="mt-1 text-sm text-ink/60">
           You can change any of these later from settings.
         </p>
       </div>

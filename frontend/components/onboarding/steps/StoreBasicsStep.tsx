@@ -15,10 +15,9 @@ export default function StoreBasicsStep({ onboarding }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-xl text-[var(--onb-ink)]">
-          What should we call your store?
-        </h2>
-        <p className="mt-1 text-sm text-[var(--onb-muted)]">
+        <p className="eyebrow mb-2">Step one</p>
+        <h2 className="font-display text-xl text-ink">What should we call your store?</h2>
+        <p className="mt-1 text-sm text-ink/60">
           This is the name customers and your team will see.
         </p>
       </div>
@@ -35,7 +34,7 @@ export default function StoreBasicsStep({ onboarding }: Props) {
       </Field>
 
       <div>
-        <p className="text-sm font-medium text-[var(--onb-ink)]">What kind of business is this?</p>
+        <p className="text-sm text-ink">What kind of business is this?</p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {BUSINESS_TYPES.map((type) => {
             const active = form.businessType === type;
@@ -44,10 +43,10 @@ export default function StoreBasicsStep({ onboarding }: Props) {
                 key={type}
                 type="button"
                 onClick={() => updateField("businessType", type)}
-                className={`rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+                className={`border px-3 py-2.5 text-left text-sm transition-colors ${
                   active
-                    ? "border-[var(--onb-primary)] bg-[var(--onb-primary-soft)] text-[var(--onb-primary-ink)]"
-                    : "border-[var(--onb-border)] text-[var(--onb-ink)] hover:border-[var(--onb-primary)]"
+                    ? "border-accent bg-accent text-paper"
+                    : "border-ink/20 text-ink hover:border-accent hover:text-accent"
                 }`}
               >
                 {BUSINESS_TYPE_LABELS[type]}
@@ -55,9 +54,7 @@ export default function StoreBasicsStep({ onboarding }: Props) {
             );
           })}
         </div>
-        {errors.businessType && (
-          <p className="mt-1.5 text-xs text-red-600">{errors.businessType}</p>
-        )}
+        {errors.businessType && <p className="mt-1.5 text-xs text-red-700">{errors.businessType}</p>}
       </div>
 
       {form.businessType === "other" && (

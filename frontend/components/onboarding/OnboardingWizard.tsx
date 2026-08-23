@@ -17,9 +17,7 @@ export default function OnboardingWizard() {
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="font-[family-name:var(--font-mono)] text-sm text-[var(--onb-muted)]">
-          Checking your account…
-        </p>
+        <p className="font-mono text-sm text-ink/50">Checking your account…</p>
       </div>
     );
   }
@@ -27,57 +25,57 @@ export default function OnboardingWizard() {
   const isLastStep = stepIndex === steps.length - 1;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10 sm:py-16">
-      <header className="mb-10">
-        <p className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.2em] text-[var(--onb-muted)]">
-          Set up your shop
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl italic text-[var(--onb-ink)] sm:text-4xl">
-          Let&rsquo;s open your storefront.
-        </h1>
-      </header>
+    <main className="flex min-h-screen justify-center px-6 py-10 sm:py-16">
+      <div className="w-full max-w-xl">
+        <header className="mb-10 text-center">
+          <p className="eyebrow mb-3">Set up your shop</p>
+          <h1 className="font-display text-[1.9rem] leading-tight text-ink">
+            Let&rsquo;s open your storefront.
+          </h1>
+        </header>
 
-      <StepIndicator steps={steps} currentIndex={stepIndex} />
+        <StepIndicator steps={steps} currentIndex={stepIndex} />
 
-      <div className="mt-8 flex-1 rounded-2xl border border-[var(--onb-border)] bg-[var(--onb-surface)] p-6 shadow-sm sm:p-8">
-        {stepIndex === 0 && <StoreBasicsStep onboarding={onboarding} />}
-        {stepIndex === 1 && <BusinessCategoryStep onboarding={onboarding} />}
-        {stepIndex === 2 && <LocationStep onboarding={onboarding} />}
-        {stepIndex === 3 && <PreferencesStep onboarding={onboarding} />}
-        {stepIndex === 4 && <ReviewStep onboarding={onboarding} />}
-      </div>
+        <div className="ledger-card mt-8 px-8 py-9 sm:px-10 sm:py-10">
+          {stepIndex === 0 && <StoreBasicsStep onboarding={onboarding} />}
+          {stepIndex === 1 && <BusinessCategoryStep onboarding={onboarding} />}
+          {stepIndex === 2 && <LocationStep onboarding={onboarding} />}
+          {stepIndex === 3 && <PreferencesStep onboarding={onboarding} />}
+          {stepIndex === 4 && <ReviewStep onboarding={onboarding} />}
+        </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={goBack}
-          disabled={stepIndex === 0 || submitting}
-          className="rounded-full px-5 py-2.5 text-sm font-medium text-[var(--onb-muted)] transition hover:text-[var(--onb-ink)] disabled:opacity-0"
-        >
-          Back
-        </button>
-
-        {!isLastStep ? (
+        <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
-            onClick={goNext}
-            className="rounded-full bg-[var(--onb-primary)] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--onb-primary-ink)]"
+            onClick={goBack}
+            disabled={stepIndex === 0 || submitting}
+            className="text-sm text-ink/50 transition-colors hover:text-accent disabled:opacity-0"
           >
-            Continue
+            Back
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting}
-            className="rounded-full bg-[var(--onb-accent)] px-6 py-2.5 text-sm font-medium text-white transition hover:brightness-95 disabled:opacity-60"
-          >
-            {submitting ? "Opening your store…" : "Create my store"}
-          </button>
-        )}
-      </div>
 
-      {submitError && <p className="mt-4 text-center text-sm text-red-600">{submitError}</p>}
-    </div>
+          {!isLastStep ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="bg-accent px-6 py-3 text-sm tracking-wide text-paper transition-colors hover:bg-accent-dim"
+            >
+              Continue
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={submitting}
+              className="bg-accent px-6 py-3 text-sm tracking-wide text-paper transition-colors hover:bg-accent-dim disabled:opacity-60"
+            >
+              {submitting ? "Opening your store…" : "Create my store"}
+            </button>
+          )}
+        </div>
+
+        {submitError && <p className="mt-4 text-center text-sm text-red-700">{submitError}</p>}
+      </div>
+    </main>
   );
 }

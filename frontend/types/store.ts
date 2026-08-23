@@ -1,3 +1,7 @@
+// Mirrors the values enforced by the backend (controllers/store.js).
+// Keep these two arrays in sync with BUSINESS_TYPES / BUSINESS_CATEGORIES
+// on the server — the API rejects anything not in that list.
+
 export const BUSINESS_TYPES = [
   "retail",
   "wholesale",

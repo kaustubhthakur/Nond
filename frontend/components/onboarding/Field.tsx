@@ -14,15 +14,13 @@ interface FieldProps {
 export default function Field({ label, htmlFor, error, hint, optional, children }: FieldProps) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-[var(--onb-ink)]">
+      <label htmlFor={htmlFor} className="block text-sm text-ink">
         {label}
-        {optional && (
-          <span className="ml-1.5 text-xs font-normal text-[var(--onb-muted)]">optional</span>
-        )}
+        {optional && <span className="ml-1.5 text-xs text-ink/40">optional</span>}
       </label>
       {children}
-      {hint && !error && <p className="mt-1.5 text-xs text-[var(--onb-muted)]">{hint}</p>}
-      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+      {hint && !error && <p className="mt-1.5 text-xs text-ink/50">{hint}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

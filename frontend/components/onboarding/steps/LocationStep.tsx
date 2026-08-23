@@ -14,10 +14,9 @@ export default function LocationStep({ onboarding }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-xl text-[var(--onb-ink)]">
-          Where's the store located?
-        </h2>
-        <p className="mt-1 text-sm text-[var(--onb-muted)]">
+        <p className="eyebrow mb-2">Step three</p>
+        <h2 className="font-display text-xl text-ink">Where&rsquo;s the store located?</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Used on invoices and for customers finding you.
         </p>
       </div>

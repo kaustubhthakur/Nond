@@ -19,13 +19,13 @@ function SummaryRow({
   return (
     <div className="flex items-start justify-between gap-4 py-3">
       <div>
-        <p className="text-xs uppercase tracking-wide text-[var(--onb-muted)]">{label}</p>
-        <p className="mt-0.5 text-sm text-[var(--onb-ink)]">{value || "—"}</p>
+        <p className="font-mono text-xs uppercase tracking-wide text-ink/40">{label}</p>
+        <p className="mt-0.5 text-sm text-ink">{value || "—"}</p>
       </div>
       <button
         type="button"
         onClick={onEdit}
-        className="shrink-0 text-xs font-medium text-[var(--onb-primary)] hover:underline"
+        className="shrink-0 text-xs text-accent hover:underline"
       >
         Edit
       </button>
@@ -55,15 +55,14 @@ export default function ReviewStep({ onboarding }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-xl text-[var(--onb-ink)]">
-          Ready to open?
-        </h2>
-        <p className="mt-1 text-sm text-[var(--onb-muted)]">
+        <p className="eyebrow mb-2">Step five</p>
+        <h2 className="font-display text-xl text-ink">Ready to open?</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Double-check the details below before your store goes live.
         </p>
       </div>
 
-      <div className="divide-y divide-[var(--onb-border)] rounded-xl border border-[var(--onb-border)] px-4">
+      <div className="divide-y divide-ink/10 border border-ink/20 px-4">
         <SummaryRow label="Store name" value={form.storeName} onEdit={() => goToStep(0)} />
         <SummaryRow label="Business type" value={businessTypeLabel} onEdit={() => goToStep(0)} />
         <SummaryRow label="Category" value={businessCategoryLabel} onEdit={() => goToStep(1)} />
