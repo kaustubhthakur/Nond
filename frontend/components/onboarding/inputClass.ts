@@ -1,0 +1,2 @@
+export const inputClass =
+  "mt-1.5 w-full rounded-lg border border-[var(--onb-border)] bg-[var(--onb-surface)] px-3.5 py-2.5 text-sm text-[var(--onb-ink)] outline-none transition placeholder:text-[var(--onb-muted)] focus:border-[var(--onb-primary)] focus:ring-2 focus:ring-[var(--onb-primary-soft)]";
