@@ -6,14 +6,6 @@ import { getMyStores } from "@/lib/store";
 
 type GuardMode = "require-store" | "require-no-store";
 
-/**
- * Keeps first-time users inside /onboarding until they've created a
- * store, and keeps users who already have one out of /onboarding.
- *
- * Usage:
- *   useOnboardingGuard("require-store");     // in app/dashboard/layout.tsx
- *   useOnboardingGuard("require-no-store");  // in app/onboarding/page.tsx (via OnboardingWizard)
- */
 export function useOnboardingGuard(mode: GuardMode) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
