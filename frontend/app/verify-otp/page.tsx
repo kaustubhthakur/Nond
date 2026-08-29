@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/lib/api";
+import { getMyStores } from "@/lib/store";
 import { ApiError, OtpMethod } from "@/types/auth";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -46,7 +47,16 @@ function VerifyOtpForm() {
       const res = await authApi.verifyOtp({ userId, otp: code, method });
       setSession(res.user, res.token);
       setStamped(true);
-   setTimeout(() => router.push("/onboarding"), 450);
+
+      let destination = "/onboarding";
+      try {
+        const { stores } = await getMyStores();
+        if (stores.length > 0) destination = "/dashboard";
+      } catch {
+        // fall back to onboarding if the store check fails
+      }
+
+      setTimeout(() => router.push(destination), 450);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Verification failed.");
       setOtp("");
