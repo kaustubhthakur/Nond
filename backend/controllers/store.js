@@ -423,7 +423,7 @@ exports.getStoreStats = async (req, res) => {
       return res.status(404).json({ error: "Store not found" });
     }
 
-    const stats = await getStoreStatsFromFirestore(storeId);
+    const stats = await Store.getStoreStats(storeId);
 
     return res.status(200).json({
       success: true,

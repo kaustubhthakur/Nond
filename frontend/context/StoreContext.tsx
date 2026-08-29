@@ -13,8 +13,9 @@ import {
   getMyStores,
   updateStore,
   uploadStoreLogo as uploadLogoRequest,
+  getStoreStats,
 } from "@/lib/store";
-import type { Store } from "@/types/store";
+import type { Store, StoreStats } from "@/types/store";
 
 interface StoreContextValue {
   store: Store | null;
@@ -24,6 +25,10 @@ interface StoreContextValue {
   refreshStore: () => Promise<void>;
   uploadLogo: (file: File) => Promise<void>;
   renameStore: (newName: string) => Promise<void>;
+  stats: StoreStats | null;
+  loadingStats: boolean;
+  statsError: string | null;
+  refetchStats: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
@@ -34,6 +39,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [renamingStore, setRenamingStore] = useState(false);
+
+  const [stats, setStats] = useState<StoreStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const refreshStore = useCallback(async () => {
     if (!user) {
@@ -54,6 +63,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshStore();
   }, [refreshStore]);
+
+  const fetchStats = useCallback(async () => {
+    if (!store) {
+      setStats(null);
+      return;
+    }
+    setLoadingStats(true);
+    setStatsError(null);
+    try {
+      const { stats: fetchedStats } = await getStoreStats(store.id);
+      setStats(fetchedStats);
+    } catch (err) {
+      setStatsError(
+        err instanceof Error ? err.message : "Failed to load stats"
+      );
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [store]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const uploadLogo = useCallback(
     async (file: File) => {
@@ -98,6 +130,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         refreshStore,
         uploadLogo,
         renameStore,
+        stats,
+        loadingStats,
+        statsError,
+        refetchStats: fetchStats,
       }}
     >
       {children}

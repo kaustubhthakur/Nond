@@ -264,3 +264,33 @@ exports.deleteStore = async (storeId, userId) => {
 
   return result.rows[0];
 };
+
+exports.getStoreStats = async (storeId) => {
+  const result = await pool.query(
+    `
+    SELECT
+      (SELECT COUNT(*) FROM warehouses WHERE store_id = $1) AS warehouse_count,
+      (SELECT COUNT(*) FROM shelves s
+         JOIN warehouses w ON s.warehouse_id = w.id
+         WHERE w.store_id = $1) AS shelf_count,
+      (SELECT COUNT(*) FROM subshelves ss
+         JOIN shelves s ON ss.shelf_id = s.id
+         JOIN warehouses w ON s.warehouse_id = w.id
+         WHERE w.store_id = $1) AS subshelf_count,
+      (SELECT COUNT(*) FROM boxes b
+         JOIN subshelves ss ON b.subshelf_id = ss.id
+         JOIN shelves s ON ss.shelf_id = s.id
+         JOIN warehouses w ON s.warehouse_id = w.id
+         WHERE w.store_id = $1) AS box_count
+    `,
+    [storeId]
+  );
+
+  const row = result.rows[0];
+  return {
+    warehouses: Number(row.warehouse_count),
+    shelves: Number(row.shelf_count),
+    subshelves: Number(row.subshelf_count),
+    boxes: Number(row.box_count),
+  };
+};
