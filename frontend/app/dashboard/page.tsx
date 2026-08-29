@@ -1,56 +1,58 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { authApi } from "@/lib/api";
-import { ApiError } from "@/types/auth";
-import {
-  ErrorNote,
-  LedgerCard,
-  NoticeNote,
-  PageShell,
-  PrimaryButton,
-} from "@/components/ui";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { getMyStores } from "@/lib/store";
+import type { Store } from "@/types/store";
 
-function VerifyPhoneForm() {
-  const params = useSearchParams();
-  const userId = params.get("userId") ?? "";
-  const [loading, setLoading] = useState(false);
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
 
-  const confirm = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await authApi.verifyPhone(userId);
-      setDone(true);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not verify phone.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    getMyStores()
+      .then(({ stores }) => setStores(stores))
+      .catch(() => setError("Could not load your stores."))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
-    <LedgerCard step="Contact record" title="Confirm your phone">
-      <ErrorNote message={error} />
-      <NoticeNote message={done ? "Phone marked as verified." : null} />
-      {!done && (
-        <PrimaryButton type="button" loading={loading} onClick={confirm} disabled={!userId}>
-          Mark phone verified
-        </PrimaryButton>
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <header className="mb-10">
+        <p className="eyebrow mb-2">Dashboard</p>
+        <h1 className="font-display text-3xl text-ink">
+          Welcome back{user ? `, ${user.username}` : ""}.
+        </h1>
+      </header>
+
+      {loading && (
+        <p className="font-mono text-sm text-ink/50">Loading your stores…</p>
       )}
-    </LedgerCard>
-  );
-}
 
-export default function VerifyPhonePage() {
-  return (
-    <PageShell>
-      <Suspense fallback={null}>
-        <VerifyPhoneForm />
-      </Suspense>
-    </PageShell>
+      {error && <p className="text-sm text-red-700">{error}</p>}
+
+      {!loading && !error && stores.length === 0 && (
+        <p className="text-ink/60">You don&rsquo;t have any stores yet.</p>
+      )}
+
+      {!loading && !error && stores.length > 0 && (
+        <ul className="space-y-4">
+          {stores.map((store) => (
+            <li key={store.id} className="ledger-card px-6 py-5">
+              <h2 className="font-display text-xl text-ink">{store.store_name}</h2>
+              <p className="mt-1 text-sm text-ink/60">
+                {store.business_type === "something-else"
+                  ? store.business_type_custom
+                  : store.business_type}
+                {" · "}
+                {store.city}, {store.country}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
   );
 }
