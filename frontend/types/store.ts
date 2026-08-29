@@ -58,6 +58,9 @@ export const BUSINESS_CATEGORY_LABELS: Record<BusinessCategory, string> = {
   other: "Something else",
 };
 
+// Payload shape sent TO the API when creating/updating a store.
+// The backend controller (controllers/store.js) reads these exact
+// camelCase keys off req.body.
 export interface CreateStorePayload {
   storeName: string;
   businessType: BusinessType;
@@ -74,11 +77,27 @@ export interface CreateStorePayload {
   timezone?: string;
 }
 
-export interface Store extends CreateStorePayload {
+// Shape returned FROM the API. Postgres/pg returns snake_case column
+// names as-is — the backend does no camelCase conversion — so this
+// must mirror the actual `stores` table columns, not CreateStorePayload.
+export interface Store {
   id: string;
-  userId: string;
-  createdAt?: string;
-  updatedAt?: string;
+  user_id: string;
+  store_name: string;
+  business_type: BusinessType;
+  business_type_custom: string | null;
+  business_category: BusinessCategory;
+  business_category_custom: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  pincode: string | null;
+  language: string | null;
+  currency: string | null;
+  timezone: string | null;
+  logo_url: string | null;
+  created_at: string;
 }
 
 export interface BusinessOptionsResponse {

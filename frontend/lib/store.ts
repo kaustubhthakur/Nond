@@ -31,6 +31,25 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
+// Separate from `request` because multipart/form-data uploads must NOT set
+// a manual Content-Type — the browser needs to set it (with the boundary)
+// itself. Reusing `request` here would break the upload.
+async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
+    credentials: "include",
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? "Something went wrong. Please try again.");
+  }
+
+  return data as T;
+}
+
 export function getBusinessOptions() {
   return request<BusinessOptionsResponse>("/store/options");
 }
@@ -55,6 +74,12 @@ export function updateStore(storeId: string, payload: Partial<CreateStorePayload
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+export function uploadStoreLogo(storeId: string, file: File) {
+  const formData = new FormData();
+  formData.append("logo", file);
+  return uploadRequest<StoreResponse>(`/store/${storeId}/logo`, formData);
 }
 
 export function deleteStore(storeId: string) {

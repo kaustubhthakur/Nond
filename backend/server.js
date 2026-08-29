@@ -12,7 +12,7 @@ const warehouseRouter = require("./routes/warehouses");
 const shelfRouter = require("./routes/shelfs");
 const subShelfRouter = require("./routes/subshelf");
 const boxRouter = require("./routes/box");
-
+const path = require("path");
 const PORT = process.env.PORT || 8081;
 
 const app = express();
@@ -33,7 +33,7 @@ app.use("/auth", authRouter);
 app.use("/user", userRouter);
 
 app.use("/store", storeRouter);
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/warehouse", warehouseRouter);
 app.use("/shelf", shelfRouter);
 app.use("/subshelf", subShelfRouter);

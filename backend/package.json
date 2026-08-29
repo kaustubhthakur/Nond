@@ -18,6 +18,7 @@
     "express": "^5.2.1",
     "firebase-admin": "^14.3.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
     "nodemailer": "^9.0.5",
     "nodemon": "^3.1.14",
     "pg": "^8.23.0"
