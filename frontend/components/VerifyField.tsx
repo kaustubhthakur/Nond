@@ -11,7 +11,7 @@ interface VerifyFieldProps {
 }
 
 export function VerifyField({ type, userId, verified }: VerifyFieldProps) {
-  const { updateUser } = useAuth();
+  const { refreshUser } = useAuth();
   const [stage, setStage] = useState<"idle" | "otp-sent" | "verifying">("idle");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +37,13 @@ export function VerifyField({ type, userId, verified }: VerifyFieldProps) {
     try {
       await authApi.verifyOtp({ userId, otp: otp.trim(), method: "email" });
 
-      const { user: updated } =
-        type === "email"
-          ? await authApi.verifyEmail(userId)
-          : await authApi.verifyPhone(userId);
+      if (type === "email") {
+        await authApi.verifyEmail(userId);
+      } else {
+        await authApi.verifyPhone(userId);
+      }
 
-      updateUser(updated);
+      await refreshUser();
       setStage("idle");
       setOtp("");
     } catch (err) {

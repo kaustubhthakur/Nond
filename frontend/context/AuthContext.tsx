@@ -9,6 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { User } from "@/types/auth";
+import { getUserById } from "@/lib/user";
 
 const STORAGE_KEY = "auth:user";
 const TOKEN_KEY = "auth:token";
@@ -19,7 +20,7 @@ interface AuthContextValue {
   isLoading: boolean;
   setSession: (user: User, token: string) => void;
   clearSession: () => void;
-  updateUser: (user: User) => void; // new
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -57,14 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(TOKEN_KEY);
   }, []);
 
-  const updateUser = useCallback((nextUser: User) => {
-    setUser(nextUser);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-  }, []);
+  const refreshUser = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { user: fresh } = await getUserById(user.id);
+      setUser(fresh);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+    } catch {
+      // ignore — keep stale cached user rather than clearing session
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, setSession, clearSession, updateUser }}
+      value={{ user, token, isLoading, setSession, clearSession, refreshUser }}
     >
       {children}
     </AuthContext.Provider>
