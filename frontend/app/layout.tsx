@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { StoreProvider } from "@/context/StoreContext";
 import { Navbar } from "@/components/Navbar";
+import { DocumentTitle } from "@/components/DocumentTitle";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -23,7 +24,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NOND",
+  title: "Nond",
   description: "Account access, verified.",
 };
 
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="font-body min-h-screen antialiased">
         <AuthProvider>
           <StoreProvider>
+            <DocumentTitle />
             <Navbar />
             {children}
           </StoreProvider>
