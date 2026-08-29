@@ -7,7 +7,7 @@ export function DocumentTitle() {
   const { store } = useStore();
 
   useEffect(() => {
-    document.title = store ? `${store.store_name} by Nond` : "Nond";
+    document.title = store ? `${store.store_name} - Nond` : "Nond";
   }, [store]);
 
   return null;

@@ -118,6 +118,20 @@ export function Navbar() {
                 Dashboard
               </Link>
 
+              <Link
+                href="/warehouses"
+                className={navLinkClass(pathname.startsWith("/warehouses"))}
+              >
+                Warehouses
+              </Link>
+
+              <Link
+                href="/profile"
+                className={navLinkClass(pathname.startsWith("/profile"))}
+              >
+                Profile
+              </Link>
+
               <button
                 type="button"
                 onClick={handleLogout}
@@ -127,12 +141,13 @@ export function Navbar() {
                 {loggingOut ? "Signing out…" : "Sign out"}
               </button>
 
-              <div
+              <Link
+                href="/profile"
                 title={user.username}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 border border-accent/30 font-mono text-xs text-accent"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 border border-accent/30 font-mono text-xs text-accent hover:border-accent transition-colors"
               >
                 {initials}
-              </div>
+              </Link>
             </>
           ) : (
             <>
