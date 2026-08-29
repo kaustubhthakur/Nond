@@ -61,17 +61,14 @@ export function Navbar() {
   return (
     <header className="border-b border-line bg-paper/90 backdrop-blur sticky top-0 z-10">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
+        <div className="flex items-center gap-3 group">
           {store ? (
             <>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleLogoClick();
-                }}
+                onClick={handleLogoClick}
                 title="Update store logo"
-                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-ink/20 bg-paper transition-colors group-hover:border-accent"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-ink/20 bg-paper transition-colors hover:border-accent"
               >
                 {store.logo_url ? (
                   <Image
@@ -82,7 +79,7 @@ export function Navbar() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-ink/40 group-hover:text-accent text-lg leading-none">
+                  <span className="text-ink/40 hover:text-accent text-lg leading-none">
                     +
                   </span>
                 )}
@@ -94,16 +91,22 @@ export function Navbar() {
                 className="hidden"
                 onChange={handleFileChange}
               />
-              <span className="font-display italic text-lg text-ink tracking-wide">
+              <Link
+                href="/"
+                className="font-display italic text-lg text-ink tracking-wide"
+              >
                 {uploadingLogo ? "Uploading…" : store.store_name}
-              </span>
+              </Link>
             </>
           ) : (
-            <span className="font-display italic text-lg text-ink tracking-wide">
+            <Link
+              href="/"
+              className="font-display italic text-lg text-ink tracking-wide"
+            >
               Ledger
-            </span>
+            </Link>
           )}
-        </Link>
+        </div>
 
         <nav className="flex items-center gap-4 sm:gap-5">
           {isLoading ? null : user ? (
@@ -148,4 +151,4 @@ export function Navbar() {
       </div>
     </header>
   );
-}
+}git 
