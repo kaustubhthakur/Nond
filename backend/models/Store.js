@@ -66,6 +66,7 @@ exports.createStore = async ({
       language,
       currency,
       timezone,
+      logo_url,
       created_at
     `,
     [
@@ -108,6 +109,7 @@ exports.getStoresByUserId = async (userId) => {
       language,
       currency,
       timezone,
+      logo_url,
       created_at
     FROM stores
     WHERE user_id = $1
@@ -138,6 +140,7 @@ exports.getStoreById = async (storeId, userId) => {
       language,
       currency,
       timezone,
+      logo_url,
       created_at
     FROM stores
     WHERE id = $1
@@ -204,6 +207,7 @@ exports.updateStore = async (
       language,
       currency,
       timezone,
+      logo_url,
       created_at
     `,
     [
@@ -223,6 +227,25 @@ exports.updateStore = async (
       storeId,
       userId,
     ]
+  );
+
+  return result.rows[0];
+};
+
+exports.updateStoreLogo = async (storeId, userId, logoUrl) => {
+  const result = await pool.query(
+    `
+    UPDATE stores
+    SET logo_url = $1
+    WHERE id = $2
+      AND user_id = $3
+    RETURNING
+      id,
+      user_id,
+      store_name,
+      logo_url
+    `,
+    [logoUrl, storeId, userId]
   );
 
   return result.rows[0];
