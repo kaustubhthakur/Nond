@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const { user, isLoading, refreshUser } = useAuth();
   const { store, stats, loadingStats, statsError, refetchStats } = useStore();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
@@ -67,11 +68,15 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingAvatar(true);
+    setAvatarError(null);
     try {
-      await uploadAvatar(user.id, file);
+      const result = await uploadAvatar(user.id, file);
+      console.log("upload result:", result);
       await refreshUser();
-    } catch {
-      // could surface a toast/error state here if you want
+      console.log("refreshUser done");
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      setAvatarError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploadingAvatar(false);
       e.target.value = "";
@@ -82,26 +87,31 @@ export default function ProfilePage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-10">
       {/* Header */}
       <section className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={handleAvatarClick}
-          title="Update profile picture"
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 border border-accent/30 font-mono text-lg text-accent overflow-hidden hover:border-accent transition-colors"
-        >
-          {uploadingAvatar ? (
-            <span className="text-xs text-accent">...</span>
-          ) : user.avatar ? (
-            <Image
-              src={`${API_BASE_URL}${user.avatar}`}
-              alt={`${user.username}'s avatar`}
-              width={64}
-              height={64}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            initials
+        <div className="flex flex-col items-start gap-1">
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            title="Update profile picture"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 border border-accent/30 font-mono text-lg text-accent overflow-hidden hover:border-accent transition-colors"
+          >
+            {uploadingAvatar ? (
+              <span className="text-xs text-accent">...</span>
+            ) : user.avatar ? (
+              <Image
+                src={`${API_BASE_URL}${user.avatar}`}
+                alt={`${user.username}'s avatar`}
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials
+            )}
+          </button>
+          {avatarError && (
+            <p className="text-xs text-rust max-w-[140px]">{avatarError}</p>
           )}
-        </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -114,6 +124,7 @@ export default function ProfilePage() {
             {user.username}
           </h1>
           <p className="text-sm text-ink/60">{user.email}</p>
+        
         </div>
       </section>
 
