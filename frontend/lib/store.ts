@@ -3,6 +3,7 @@ import type {
   CreateStorePayload,
   StoreResponse,
   StoresListResponse,
+   StoreStatsResponse
 } from "@/types/store";
 
 
@@ -80,4 +81,7 @@ export function deleteStore(storeId: string) {
   return request<{ success: boolean; message: string }>(`/store/${storeId}`, {
     method: "DELETE",
   });
+}
+export function getStoreStats(storeId: string) {
+  return request<StoreStatsResponse>(`/store/${storeId}/stats`);
 }

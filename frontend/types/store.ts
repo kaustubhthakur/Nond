@@ -106,3 +106,14 @@ export interface StoresListResponse {
   success: boolean;
   stores: Store[];
 }
+export interface StoreStats {
+  warehouses: number;
+  shelves: number;
+  subshelves: number;
+  boxes: number;
+}
+
+export interface StoreStatsResponse {
+  success: true;
+  stats: StoreStats;
+}
