@@ -13,6 +13,7 @@ const {
   uploadStoreLogo,
   deleteStore,
   getBusinessOptions,
+  getStoreStats, // add this
 } = require("../controllers/store");
 
 const verifyToken = require("../middlewares/auth");
@@ -46,6 +47,8 @@ router.post("/", verifyToken, createStore);
 router.get("/", verifyToken, getMyStores);
 
 router.get("/:storeId", verifyToken, getStore);
+
+router.get("/:storeId/stats", verifyToken, getStoreStats); // new
 
 router.put("/:storeId", verifyToken, updateStore);
 
