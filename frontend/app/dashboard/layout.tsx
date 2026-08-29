@@ -1,4 +1,4 @@
-// app/dashboard/layout.tsx
+
 "use client";
 
 import { useOnboardingGuard } from "@/hooks/useOnboardingGuard";

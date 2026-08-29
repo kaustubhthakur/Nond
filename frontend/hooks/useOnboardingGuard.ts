@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getMyStores } from "@/lib/store";
 
 type GuardMode = "require-store" | "require-no-store";
-
+  
 export function useOnboardingGuard(mode: GuardMode) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
@@ -31,9 +31,7 @@ export function useOnboardingGuard(mode: GuardMode) {
         setChecking(false);
       })
       .catch(() => {
-        // If the check itself fails (e.g. expired token), let the
-        // page's own auth guard redirect to /login instead of
-        // blocking here.
+      
         if (!cancelled) setChecking(false);
       });
 

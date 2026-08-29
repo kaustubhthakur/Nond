@@ -23,7 +23,7 @@ export function Navbar() {
     try {
       await authApi.logout();
     } catch {
-      // clear the local session regardless of API result
+   
     } finally {
       clearSession();
       setLoggingOut(false);

@@ -58,8 +58,7 @@ export function useOnboarding() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Restore an in-progress draft so a refresh or dropped connection
-  // doesn't send the user back to a blank first step.
+ 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
@@ -68,14 +67,14 @@ export function useOnboarding() {
         setForm((prev) => ({ ...prev, ...parsed.form }));
         setStepIndex(parsed.stepIndex ?? 0);
       } else {
-        // Only auto-detect on a fresh draft, not over a restored one.
+      
         setForm((prev) => ({
           ...prev,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || prev.timezone,
         }));
       }
     } catch {
-      // Malformed draft — start clean.
+    
     } finally {
       setHydrated(true);
     }
@@ -136,7 +135,7 @@ export function useOnboarding() {
 
   const goToStep = useCallback(
     (index: number) => {
-      // Only allow jumping to steps already completed, from the review step.
+      
       if (index <= stepIndex) setStepIndex(index);
     },
     [stepIndex]
