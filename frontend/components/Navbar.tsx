@@ -20,9 +20,12 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, clearSession } = useAuth();
-  const { store, uploadLogo, uploadingLogo } = useStore();
+  const { store, uploadLogo, uploadingLogo, renameStore, renamingStore } = useStore();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -51,6 +54,33 @@ export function Navbar() {
       
     } finally {
       e.target.value = "";
+    }
+  };
+
+  const startEditingName = () => {
+    if (!store || renamingStore) return;
+    setNameDraft(store.store_name);
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.select(), 0);
+  };
+
+  const commitNameEdit = async () => {
+    setEditingName(false);
+    if (!store) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === store.store_name) return;
+    try {
+      await renameStore(trimmed);
+    } catch {
+      
+    }
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    } else if (e.key === "Escape") {
+      setEditingName(false);
     }
   };
 
@@ -91,12 +121,31 @@ export function Navbar() {
                 className="hidden"
                 onChange={handleFileChange}
               />
-              <Link
-                href="/"
-                className="font-display italic text-lg text-ink tracking-wide"
-              >
-                {uploadingLogo ? "Uploading…" : store.store_name}
-              </Link>
+
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={commitNameEdit}
+                  onKeyDown={handleNameKeyDown}
+                  className="font-display italic text-lg text-ink tracking-wide bg-transparent border-b border-accent focus:outline-none max-w-[200px]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEditingName}
+                  title="Click to rename your store"
+                  className="font-display italic text-lg text-ink tracking-wide hover:text-accent transition-colors text-left"
+                >
+                  {renamingStore
+                    ? "Saving…"
+                    : uploadingLogo
+                    ? "Uploading…"
+                    : store.store_name}
+                </button>
+              )}
             </>
           ) : (
             <Link
