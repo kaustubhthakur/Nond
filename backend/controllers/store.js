@@ -412,3 +412,27 @@ exports.getBusinessOptions = async (req, res) => {
     businessCategories: BUSINESS_CATEGORIES,
   });
 };
+
+exports.getStoreStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { storeId } = req.params;
+
+    const existingStore = await Store.getStoreById(storeId, userId);
+    if (!existingStore) {
+      return res.status(404).json({ error: "Store not found" });
+    }
+
+    const stats = await getStoreStatsFromFirestore(storeId);
+
+    return res.status(200).json({
+      success: true,
+      stats,
+    });
+  } catch (err) {
+    console.error("Get store stats error:", err);
+    return res.status(500).json({
+      error: "Failed to get store stats",
+    });
+  }
+};
