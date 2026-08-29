@@ -425,14 +425,9 @@ exports.getStoreStats = async (req, res) => {
 
     const stats = await Store.getStoreStats(storeId);
 
-    return res.status(200).json({
-      success: true,
-      stats,
-    });
+    return res.status(200).json({ success: true, stats });
   } catch (err) {
     console.error("Get store stats error:", err);
-    return res.status(500).json({
-      error: "Failed to get store stats",
-    });
+    return res.status(500).json({ error: "Failed to get store stats" });
   }
 };

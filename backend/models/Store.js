@@ -285,7 +285,6 @@ exports.getStoreStats = async (storeId) => {
     `,
     [storeId]
   );
-
   const row = result.rows[0];
   return {
     warehouses: Number(row.warehouse_count),
