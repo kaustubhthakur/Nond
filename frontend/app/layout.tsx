@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { StoreProvider } from "@/context/StoreContext";
 import { Navbar } from "@/components/Navbar";
 
 const display = Fraunces({
@@ -35,8 +36,10 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="font-body min-h-screen antialiased">
         <AuthProvider>
-          <Navbar />
-          {children}
+          <StoreProvider>
+            <Navbar />
+            {children}
+          </StoreProvider>
         </AuthProvider>
       </body>
     </html>

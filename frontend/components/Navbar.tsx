@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useStore } from "@/context/StoreContext";
 import { authApi } from "@/lib/api";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
 
 function navLinkClass(active: boolean) {
   return `text-sm tracking-wide transition-colors ${
@@ -16,7 +20,9 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, clearSession } = useAuth();
+  const { store, uploadLogo, uploadingLogo } = useStore();
   const [loggingOut, setLoggingOut] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -31,6 +37,23 @@ export function Navbar() {
     }
   };
 
+  const handleLogoClick = () => {
+    if (!store || uploadingLogo) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await uploadLogo(file);
+    } catch {
+      // TODO: surface an error toast/note if you have one
+    } finally {
+      e.target.value = "";
+    }
+  };
+
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
     : "?";
@@ -38,11 +61,48 @@ export function Navbar() {
   return (
     <header className="border-b border-line bg-paper/90 backdrop-blur sticky top-0 z-10">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link
-          href="/"
-          className="font-display italic text-lg text-ink tracking-wide"
-        >
-          Ledger
+        <Link href="/" className="flex items-center gap-3 group">
+          {store ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleLogoClick();
+                }}
+                title="Update store logo"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-ink/20 bg-paper transition-colors group-hover:border-accent"
+              >
+                {store.logo_url ? (
+                  <Image
+                    src={`${API_BASE_URL}${store.logo_url}`}
+                    alt={`${store.store_name} logo`}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-ink/40 group-hover:text-accent text-lg leading-none">
+                    +
+                  </span>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <span className="font-display italic text-lg text-ink tracking-wide">
+                {uploadingLogo ? "Uploading…" : store.store_name}
+              </span>
+            </>
+          ) : (
+            <span className="font-display italic text-lg text-ink tracking-wide">
+              Ledger
+            </span>
+          )}
         </Link>
 
         <nav className="flex items-center gap-4 sm:gap-5">
