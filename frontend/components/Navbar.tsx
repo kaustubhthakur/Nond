@@ -29,7 +29,7 @@ export function Navbar() {
     try {
       await authApi.logout();
     } catch {
-      // ignore, we clear the session regardless
+     
     } finally {
       clearSession();
       setLoggingOut(false);
@@ -48,7 +48,7 @@ export function Navbar() {
     try {
       await uploadLogo(file);
     } catch {
-      // TODO: surface an error toast/note if you have one
+      
     } finally {
       e.target.value = "";
     }

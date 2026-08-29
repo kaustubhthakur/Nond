@@ -53,7 +53,7 @@ function VerifyOtpForm() {
         const { stores } = await getMyStores();
         if (stores.length > 0) destination = "/dashboard";
       } catch {
-        // fall back to onboarding if the store check fails
+        
       }
 
       setTimeout(() => router.push(destination), 450);

@@ -34,7 +34,7 @@ async function request<T>(path: string, body: unknown): Promise<T> {
   try {
     data = await res.json();
   } catch {
-    // no JSON body
+
   }
 
   if (!res.ok) {

@@ -1,7 +1,3 @@
-// Mirrors the values enforced by the backend (controllers/store.js).
-// Keep these two arrays in sync with BUSINESS_TYPES / BUSINESS_CATEGORIES
-// on the server — the API rejects anything not in that list.
-
 export const BUSINESS_TYPES = [
   "retail",
   "wholesale",
@@ -58,9 +54,6 @@ export const BUSINESS_CATEGORY_LABELS: Record<BusinessCategory, string> = {
   other: "Something else",
 };
 
-// Payload shape sent TO the API when creating/updating a store.
-// The backend controller (controllers/store.js) reads these exact
-// camelCase keys off req.body.
 export interface CreateStorePayload {
   storeName: string;
   businessType: BusinessType;
@@ -77,9 +70,6 @@ export interface CreateStorePayload {
   timezone?: string;
 }
 
-// Shape returned FROM the API. Postgres/pg returns snake_case column
-// names as-is — the backend does no camelCase conversion — so this
-// must mirror the actual `stores` table columns, not CreateStorePayload.
 export interface Store {
   id: string;
   user_id: string;
