@@ -23,13 +23,17 @@ export function Navbar() {
     try {
       await authApi.logout();
     } catch {
-   
+      // ignore, we clear the session regardless
     } finally {
       clearSession();
       setLoggingOut(false);
       router.push("/login");
     }
   };
+
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : "?";
 
   return (
     <header className="border-b border-line bg-paper/90 backdrop-blur sticky top-0 z-10">
@@ -41,11 +45,7 @@ export function Navbar() {
           Ledger
         </Link>
 
-        <nav className="flex items-center gap-5 sm:gap-6">
-          <Link href="/" className={navLinkClass(pathname === "/")}>
-            Home
-          </Link>
-
+        <nav className="flex items-center gap-4 sm:gap-5">
           {isLoading ? null : user ? (
             <>
               <Link
@@ -54,6 +54,7 @@ export function Navbar() {
               >
                 Dashboard
               </Link>
+
               <button
                 type="button"
                 onClick={handleLogout}
@@ -62,6 +63,13 @@ export function Navbar() {
               >
                 {loggingOut ? "Signing out…" : "Sign out"}
               </button>
+
+              <div
+                title={user.username}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 border border-accent/30 font-mono text-xs text-accent"
+              >
+                {initials}
+              </div>
             </>
           ) : (
             <>
