@@ -184,13 +184,14 @@ exports.verifyEmail = async (userId) => {
       username,
       email,
       phone,
+      avatar,
       email_verified,
       phone_verified,
-      onboarding_completed
+      onboarding_completed,
+      created_at
     `,
     [userId]
   );
-
   return result.rows[0];
 };
 
@@ -205,16 +206,16 @@ exports.verifyPhone = async (userId) => {
       username,
       email,
       phone,
+      avatar,
       email_verified,
       phone_verified,
-      onboarding_completed
+      onboarding_completed,
+      created_at
     `,
     [userId]
   );
-
   return result.rows[0];
 };
-
 exports.completeOnboarding = async (userId) => {
   const result = await pool.query(
     `
