@@ -19,6 +19,7 @@ interface AuthContextValue {
   isLoading: boolean;
   setSession: (user: User, token: string) => void;
   clearSession: () => void;
+  updateUser: (user: User) => void; // new
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -56,9 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(TOKEN_KEY);
   }, []);
 
+  const updateUser = useCallback((nextUser: User) => {
+    setUser(nextUser);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, setSession, clearSession }}
+      value={{ user, token, isLoading, setSession, clearSession, updateUser }}
     >
       {children}
     </AuthContext.Provider>
