@@ -36,7 +36,14 @@ router.get("/:storeId", verifyToken, getStore);
 
 router.put("/:storeId", verifyToken, updateStore);
 
-router.put("/:storeId/logo", verifyToken, upload.single("logo"), uploadStoreLogo);
+router.put("/:storeId/logo", verifyToken, (req, res, next) => {
+  upload.single("logo")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Upload failed" });
+    }
+    next();
+  });
+}, uploadStoreLogo);
 
 router.delete("/:storeId", verifyToken, deleteStore);
 

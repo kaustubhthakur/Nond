@@ -308,53 +308,38 @@ exports.updateStore = async (req, res) => {
   }
 };
 
-exports.uploadStoreLogo = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { storeId } = req.params;
+exports.uploadStoreLogo = (req, res) => {
+  const userId = req.user?.id;
+  const { storeId } = req.params;
 
-    const existingStore = await Store.getStoreById(storeId, userId);
-
-    if (!existingStore) {
-      return res.status(404).json({
-        error: "Store not found",
-      });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({
-        error: "No logo file was uploaded",
-      });
-    }
-
-    // TODO: confirm how Firebase Storage bucket is exposed from ../firebase
-    // Expecting something like: const { bucket } = require("../firebase");
-    const { bucket } = require("../firebase");
-
-    const destination = `store-logos/${storeId}-${Date.now()}-${req.file.originalname}`;
-    const fileRef = bucket.file(destination);
-
-    await fileRef.save(req.file.buffer, {
-      metadata: { contentType: req.file.mimetype },
-      public: true,
-    });
-
-    const logoUrl = `https://storage.googleapis.com/${bucket.name}/${destination}`;
-
-    const updatedStore = await Store.updateStoreLogo(storeId, userId, logoUrl);
-
-    return res.status(200).json({
-      success: true,
-      message: "Logo uploaded successfully",
-      store: updatedStore,
-    });
-  } catch (err) {
-    console.error("Upload logo error:", err);
-
-    return res.status(500).json({
-      error: "Failed to upload logo",
-    });
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
   }
+
+  Store.getStoreById(storeId, userId)
+    .then((existingStore) => {
+      if (!existingStore) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No logo file was uploaded" });
+      }
+
+      const logoUrl = `/uploads/store-logos/${req.file.filename}`;
+
+      return Store.updateStoreLogo(storeId, userId, logoUrl).then((updatedStore) => {
+        return res.status(200).json({
+          success: true,
+          message: "Logo uploaded successfully",
+          store: updatedStore,
+        });
+      });
+    })
+    .catch((err) => {
+      console.error("Upload logo error:", err);
+      return res.status(500).json({ error: "Failed to upload logo" });
+    });
 };
 
 exports.deleteStore = async (req, res) => {
