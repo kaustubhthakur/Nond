@@ -23,7 +23,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ledger — Sign in",
+  title: "NOND",
   description: "Account access, verified.",
 };
 

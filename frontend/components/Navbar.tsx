@@ -103,7 +103,7 @@ export function Navbar() {
               href="/"
               className="font-display italic text-lg text-ink tracking-wide"
             >
-              Nond
+              NOND
             </Link>
           )}
         </div>
