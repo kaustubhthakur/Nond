@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
+import { VerifyField } from "@/components/VerifyField";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
 
@@ -88,10 +89,14 @@ export default function ProfilePage() {
           <dd className="text-ink">{user.phone || "—"}</dd>
 
           <dt className="text-ink/50">Email verified</dt>
-          <dd className="text-ink">{user.email_verified ? "Yes" : "No"}</dd>
+<dd>
+  <VerifyField type="email" userId={user.id} verified={user.email_verified} />
+</dd>
 
-          <dt className="text-ink/50">Phone verified</dt>
-          <dd className="text-ink">{user.phone_verified ? "Yes" : "No"}</dd>
+<dt className="text-ink/50">Phone verified</dt>
+<dd>
+  <VerifyField type="phone" userId={user.id} verified={user.phone_verified} />
+</dd>
 
           <dt className="text-ink/50">Member since</dt>
           <dd className="text-ink">
