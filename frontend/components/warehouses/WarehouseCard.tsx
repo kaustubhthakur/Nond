@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Warehouse } from "@/types/warehouse";
 
@@ -49,9 +50,12 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
     <div className="border border-line bg-paper p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display italic text-lg text-ink tracking-wide truncate">
+          <Link
+            href={`/warehouses/${warehouse.id}`}
+            className="font-display italic text-lg text-ink tracking-wide truncate hover:text-accent transition-colors block"
+          >
             {warehouse.name}
-          </h3>
+          </Link>
           {warehouse.address ? (
             <p className="text-xs text-ink/50 mt-0.5 truncate">
               {warehouse.address}
