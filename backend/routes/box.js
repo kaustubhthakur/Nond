@@ -11,6 +11,8 @@ const {
   updateBox,
   deleteBox,
   getBoxOptions,
+  addProduct,
+  getBoxProducts,
 } = require("../controllers/box");
 
 router.get(
@@ -47,6 +49,18 @@ router.delete(
   "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/sub-shelf/:subShelfId/:boxId",
   verifyToken,
   deleteBox
+);
+
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/sub-shelf/:subShelfId/:boxId/products",
+  verifyToken,
+  addProduct
+);
+
+router.get(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/sub-shelf/:subShelfId/:boxId/products",
+  verifyToken,
+  getBoxProducts
 );
 
 module.exports = router;

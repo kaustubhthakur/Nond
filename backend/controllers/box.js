@@ -686,3 +686,299 @@ exports.getBoxOptions = async (
       MAX_PRODUCTS,
   });
 };
+
+
+const validateProductInput = (
+  name,
+  sku,
+  quantity
+) => {
+  if (
+    typeof name !== "string" ||
+    !name.trim()
+  ) {
+    return "Product name is required";
+  }
+
+  if (name.trim().length > 100) {
+    return "Product name cannot exceed 100 characters";
+  }
+
+  if (
+    sku !== undefined &&
+    sku !== null &&
+    typeof sku !== "string" &&
+    typeof sku !== "number"
+  ) {
+    return "SKU must be a string or number";
+  }
+
+  if (
+    quantity === undefined ||
+    quantity === null ||
+    typeof quantity !== "number" ||
+    !Number.isInteger(quantity) ||
+    quantity <= 0
+  ) {
+    return "Quantity must be a positive integer";
+  }
+
+  return null;
+};
+
+exports.addProduct = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+    } = req.params;
+
+    const {
+      name,
+      sku,
+      quantity,
+    } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID and box ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const box =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!box) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    const inputError =
+      validateProductInput(
+        name,
+        sku,
+        quantity
+      );
+
+    if (inputError) {
+      return res.status(400).json({
+        error: inputError,
+      });
+    }
+
+    const availableSpace =
+      box.capacity - box.productQuantity;
+
+    if (quantity > availableSpace) {
+      return res.status(409).json({
+        error: `Box only has ${availableSpace} unit(s) of space left`,
+        capacity: box.capacity,
+        currentQuantity: box.productQuantity,
+        availableSpace,
+      });
+    }
+
+    let product;
+
+    try {
+      product = await Box.addProduct(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId,
+        {
+          name: name.trim(),
+          sku:
+            sku !== undefined &&
+            sku !== null
+              ? String(sku).trim()
+              : null,
+          quantity,
+        }
+      );
+    } catch (err) {
+      // Transaction rejected it — most likely a capacity race at
+      // box, sub-shelf, or shelf level.
+      return res.status(409).json({
+        error: err.message,
+      });
+    }
+
+    if (!product) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Product added to box successfully",
+      product,
+    });
+  } catch (err) {
+    console.error(
+      "Add product to box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to add product to box",
+    });
+  }
+};
+
+exports.getBoxProducts = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID and box ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const box =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!box) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    const products =
+      await Box.getProducts(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      capacity: box.capacity,
+      productQuantity: box.productQuantity,
+      products,
+    });
+  } catch (err) {
+    console.error(
+      "Get box products error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get box products",
+    });
+  }
+};
