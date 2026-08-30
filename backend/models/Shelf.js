@@ -14,7 +14,20 @@ const getShelvesRef = (
     .doc(String(warehouseId))
     .collection("shelves");
 };
-
+const getProductsRef = (
+  storeId,
+  warehouseId,
+  shelfId
+) => {
+  return db
+    .collection("stores")
+    .doc(String(storeId))
+    .collection("warehouses")
+    .doc(String(warehouseId))
+    .collection("shelves")
+    .doc(String(shelfId))
+    .collection("products");
+};
 exports.createShelf = async ({
   storeId,
   warehouseId,

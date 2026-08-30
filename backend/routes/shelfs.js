@@ -11,6 +11,7 @@ const {
   updateShelf,
   deleteShelf,
   getShelfOptions,
+  addProductToShelf,
 } = require("../controllers/shelfs");
 
 router.get(
@@ -47,6 +48,12 @@ router.delete(
   "/store/:storeId/warehouse/:warehouseId/:shelfId",
   verifyToken,
   deleteShelf
+);
+
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/:shelfId/product",
+  verifyToken,
+  addProductToShelf
 );
 
 module.exports = router;

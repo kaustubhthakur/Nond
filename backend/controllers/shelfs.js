@@ -594,3 +594,115 @@ exports.getShelfOptions = async (
       MAX_PRODUCTS,
   });
 };
+
+exports.addProductToShelf = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+    } = req.params;
+
+    const {
+      productId,
+      quantity,
+    } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID and shelf ID are required",
+      });
+    }
+
+    if (!productId) {
+      return res.status(400).json({
+        error: "Product ID is required",
+      });
+    }
+
+    if (
+      !Number.isInteger(Number(quantity)) ||
+      Number(quantity) <= 0
+    ) {
+      return res.status(400).json({
+        error:
+          "Quantity must be a positive integer",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const warehouse =
+      await getWarehouse(
+        storeId,
+        warehouseId
+      );
+
+    if (!warehouse) {
+      return res.status(404).json({
+        error: "Warehouse not found",
+      });
+    }
+
+    const shelf =
+      await Shelf.getShelf(
+        storeId,
+        warehouseId,
+        shelfId
+      );
+
+    if (!shelf) {
+      return res.status(404).json({
+        error: "Shelf not found",
+      });
+    }
+
+    const product =
+      await Shelf.addProductToShelf({
+        storeId,
+        warehouseId,
+        shelfId,
+        productId,
+        quantity: Number(quantity),
+      });
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Product added to shelf successfully",
+      product,
+    });
+  } catch (err) {
+    console.error(
+      "Add product to shelf error:",
+      err
+    );
+
+    return res.status(400).json({
+      error:
+        err.message ||
+        "Failed to add product to shelf",
+    });
+  }
+};
