@@ -19,7 +19,7 @@ const getStoreForUser = async (
   storeId
 ) => {
   const store =
-    await Store.getStoreByUserId(userId);
+  await Store.getStoreById(storeId, userId)
 
   if (!store) {
     return null;
