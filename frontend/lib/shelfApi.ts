@@ -1,8 +1,10 @@
 import { ApiError, ApiErrorBody } from "@/types/auth";
 import {
+  AddProductToShelfPayload,
   CreateShelfPayload,
   Shelf,
   ShelfOptions,
+  ShelfProduct,
   UpdateShelfPayload,
 } from "@/types/shelf";
 
@@ -95,5 +97,16 @@ export const shelfApi = {
     request<{ success: true; message: string }>(
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}`,
       { method: "DELETE" }
+    ),
+
+  addProduct: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string,
+    payload: AddProductToShelfPayload
+  ) =>
+    request<{ success: true; message: string; product: ShelfProduct }>(
+      `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product`,
+      { method: "POST", body: payload }
     ),
 };

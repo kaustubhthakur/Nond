@@ -30,3 +30,19 @@ export interface UpdateShelfPayload {
   name?: string;
   description?: string;
 }
+
+export interface ShelfProduct {
+  id: string;
+  productId: string;
+  storeId: string;
+  warehouseId: string;
+  shelfId: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddProductToShelfPayload {
+  productId: string;
+  quantity: number;
+}

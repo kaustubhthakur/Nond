@@ -1,20 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { warehouseApi } from "@/lib/warehouseApi";
 import { shelfApi } from "@/lib/shelfApi";
 import { ApiError } from "@/types/auth";
 import { Warehouse } from "@/types/warehouse";
-import { CreateShelfPayload, Shelf } from "@/types/shelf";
+import { CreateShelfPayload, Shelf, AddProductToShelfPayload } from "@/types/shelf";
 import { ShelfCard } from "@/components/warehouses/ShelfCard";
 import { CreateShelfModal } from "@/components/warehouses/CreateShelfModal";
+import { AddProductModal } from "@/components/warehouses/AddProductModal";
 
 export default function WarehouseShelvesPage() {
   const { store, isLoading: storeLoading } = useStore();
   const params = useParams<{ warehouseId: string }>();
+  const router = useRouter();
   const warehouseId = params.warehouseId;
 
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
@@ -27,6 +29,9 @@ export default function WarehouseShelvesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [productModalShelf, setProductModalShelf] = useState<Shelf | null>(
+    null
+  );
 
   const loadData = useCallback(async () => {
     if (!store) return;
@@ -68,6 +73,38 @@ export default function WarehouseShelvesPage() {
     setShelves((prev) => [res.shelf, ...prev]);
     setAvailableShelves((prev) => Math.max(0, prev - 1));
     setShowCreateModal(false);
+  };
+
+  const handleAddProduct = async (payload: AddProductToShelfPayload) => {
+    if (!store || !productModalShelf) return;
+
+    await shelfApi.addProduct(
+      store.id,
+      warehouseId,
+      productModalShelf.id,
+      payload
+    );
+
+    // Mirror the backend's own math (productQuantity += qty,
+    // availableCapacity = capacity - productQuantity) so the card updates
+    // instantly without a second round trip.
+    setShelves((prev) =>
+      prev.map((s) =>
+        s.id === productModalShelf.id
+          ? {
+              ...s,
+              productQuantity: s.productQuantity + payload.quantity,
+              availableCapacity: s.availableCapacity - payload.quantity,
+            }
+          : s
+      )
+    );
+
+    setProductModalShelf(null);
+  };
+
+  const handleAddSubShelf = (shelf: Shelf) => {
+    router.push(`/warehouses/${warehouseId}/shelves/${shelf.id}`);
   };
 
   const handleDelete = async (shelf: Shelf) => {
@@ -147,14 +184,19 @@ export default function WarehouseShelvesPage() {
       ) : shelves.length === 0 ? (
         <div className="border border-dashed border-line text-center py-16 px-6">
           <p className="text-sm text-ink/60">
-            No shelves yet. Create one to start organizing sub-shelves and
-            boxes.
+            No shelves yet. Create one to start storing products.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {shelves.map((shelf) => (
-            <ShelfCard key={shelf.id} shelf={shelf} onDelete={handleDelete} />
+            <ShelfCard
+              key={shelf.id}
+              shelf={shelf}
+              onDelete={handleDelete}
+              onAddProduct={setProductModalShelf}
+              onAddSubShelf={handleAddSubShelf}
+            />
           ))}
         </div>
       )}
@@ -165,6 +207,15 @@ export default function WarehouseShelvesPage() {
           maxProducts={maxProducts}
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreate}
+        />
+      ) : null}
+
+      {productModalShelf ? (
+        <AddProductModal
+          shelfName={productModalShelf.name}
+          availableCapacity={productModalShelf.availableCapacity}
+          onClose={() => setProductModalShelf(null)}
+          onAdd={handleAddProduct}
         />
       ) : null}
     </div>

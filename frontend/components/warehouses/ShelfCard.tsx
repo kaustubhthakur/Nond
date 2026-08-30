@@ -6,9 +6,16 @@ import { Shelf } from "@/types/shelf";
 interface ShelfCardProps {
   shelf: Shelf;
   onDelete: (shelf: Shelf) => Promise<void>;
+  onAddProduct: (shelf: Shelf) => void;
+  onAddSubShelf: (shelf: Shelf) => void;
 }
 
-export function ShelfCard({ shelf, onDelete }: ShelfCardProps) {
+export function ShelfCard({
+  shelf,
+  onDelete,
+  onAddProduct,
+  onAddSubShelf,
+}: ShelfCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -100,6 +107,24 @@ export function ShelfCard({ shelf, onDelete }: ShelfCardProps) {
           {shelf.availableCapacity.toLocaleString()} unit
           {shelf.availableCapacity === 1 ? "" : "s"} of space left
         </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onAddProduct(shelf)}
+          disabled={shelf.availableCapacity <= 0}
+          className="flex-1 eyebrow border border-ink/20 px-3 py-1.5 text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+        >
+          {shelf.availableCapacity <= 0 ? "Shelf full" : "+ Add product"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onAddSubShelf(shelf)}
+          className="flex-1 eyebrow border border-ink/20 px-3 py-1.5 text-ink/70 hover:border-accent hover:text-accent transition-colors"
+        >
+          + Add sub-shelf
+        </button>
       </div>
     </div>
   );
