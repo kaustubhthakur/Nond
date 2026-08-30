@@ -849,8 +849,7 @@ exports.addProduct = async (
         }
       );
     } catch (err) {
-      // Transaction rejected it — most likely a capacity race at
-      // box, sub-shelf, or shelf level.
+   
       return res.status(409).json({
         error: err.message,
       });

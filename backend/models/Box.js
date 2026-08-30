@@ -224,10 +224,7 @@ exports.updateBox = async (
   };
 };
 
-/**
- * Deletes a box and gives back whatever product-space it was consuming
- * on its parent sub-shelf AND the shelf above that, in one transaction.
- */
+
 exports.deleteBox = async (
   storeId,
   warehouseId,
@@ -307,12 +304,7 @@ exports.deleteBox = async (
   };
 };
 
-/**
- * Adds a product into a box. Runs in a transaction that reads and
- * updates the box, its parent sub-shelf, and the shelf above that —
- * all three levels stay in sync, and capacity is checked at every
- * level so nothing can overflow even under concurrent writes.
- */
+
 exports.addProduct = async (
   storeId,
   warehouseId,
