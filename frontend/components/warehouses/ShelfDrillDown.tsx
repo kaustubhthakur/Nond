@@ -7,20 +7,30 @@ import {
   createSubShelf,
   addProductToSubShelf,
   deleteSubShelf,
+  getSubShelfProducts,
 } from "@/lib/subshelf";
-import type { SubShelf, CreateSubShelfPayload } from "@/types/subshelf";
+import type { SubShelf, CreateSubShelfPayload, SubShelfProduct } from "@/types/subshelf";
 import {
   getBoxes,
   createBox,
   addProductToBox,
   deleteBox,
+  getBoxProducts,
 } from "@/lib/box";
-import type { Box, CreateBoxPayload } from "@/types/box";
+import type { Box, CreateBoxPayload, BoxProduct } from "@/types/box";
 import { shelfApi } from "@/lib/shelfApi";
 import { DonutChart, capacitySegments } from "./DonutChart";
 import { AddProductModal } from "./AddProductModal";
 import { AddSubShelfModal } from "./AddSubShelfModal";
 import { AddBoxModal } from "./AddBoxModal";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 interface AddProductPayload {
   productId: string;
@@ -34,10 +44,21 @@ interface ShelfDrilldownProps {
   onShelfChanged?: (shelf: Shelf) => void;
 }
 
+const PIE_COLORS = [
+  "#4b6a52", // accent
+  "#a5613f", // rust
+  "#8c9c8f",
+  "#c9a26a",
+  "#6b7f8f",
+  "#b98c7a",
+  "#7a8c6b",
+  "#9a7fa8",
+];
+
 function StatusPill({ full }: { full: boolean }) {
   return (
     <span
-      className={`eyebrow text-[10px] px-2 py-0.5 rounded-full ${
+      className={`eyebrow text-[10px] px-2.5 py-1 rounded-full whitespace-nowrap ${
         full ? "bg-rust/10 text-rust" : "bg-accent/10 text-accent"
       }`}
     >
@@ -88,6 +109,64 @@ function NodeCard({
   );
 }
 
+/** Pie chart of product quantities for the current sub-shelf/box. */
+function ProductBreakdownChart({
+  products,
+  loading,
+  error,
+}: {
+  products: { name: string; quantity: number }[];
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return <p className="text-xs text-ink/50">Loading product breakdown…</p>;
+  }
+  if (error) {
+    return <p className="text-xs text-rust">{error}</p>;
+  }
+  if (products.length === 0) {
+    return <p className="text-xs text-ink/50">No products logged here yet.</p>;
+  }
+
+  const data = products.map((p) => ({ name: p.name, value: p.quantity }));
+
+  return (
+    <div className="rounded-lg border border-line bg-paper p-4">
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={45}
+              outerRadius={75}
+              paddingAngle={2}
+            >
+              {data.map((_, i) => (
+                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number, name: string) => [`${value} units`, name]}
+              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            />
+            <Legend
+              layout="vertical"
+              verticalAlign="middle"
+              align="right"
+              wrapperStyle={{ fontSize: 11, lineHeight: "18px" }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 type Level =
   | { kind: "shelf" }
   | { kind: "subshelf"; subShelf: SubShelf }
@@ -111,6 +190,15 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
   const [loadingBoxes, setLoadingBoxes] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
 
+  // Per-product breakdowns, keyed by sub-shelf id / box id, for the pie charts.
+  const [subShelfProducts, setSubShelfProducts] = useState<Record<string, SubShelfProduct[]>>({});
+  const [loadingSubShelfProducts, setLoadingSubShelfProducts] = useState(false);
+  const [subShelfProductsError, setSubShelfProductsError] = useState<string | null>(null);
+
+  const [boxProducts, setBoxProducts] = useState<Record<string, BoxProduct[]>>({});
+  const [loadingBoxProducts, setLoadingBoxProducts] = useState(false);
+  const [boxProductsError, setBoxProductsError] = useState<string | null>(null);
+
   const [showSubShelfModal, setShowSubShelfModal] = useState(false);
   const [showBoxModal, setShowBoxModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -121,6 +209,8 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
     if (open) {
       setLevel({ kind: "shelf" });
       setBoxesBySubShelf({});
+      setSubShelfProducts({});
+      setBoxProducts({});
       requestAnimationFrame(() => setVisible(true));
       if (shelf) loadSubShelves(shelf);
     } else {
@@ -156,14 +246,46 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
     }
   };
 
+  const loadSubShelfProducts = async (subShelfId: string) => {
+    if (!shelf) return;
+    setLoadingSubShelfProducts(true);
+    setSubShelfProductsError(null);
+    try {
+      const { products } = await getSubShelfProducts(shelf.storeId, shelf.warehouseId, shelf.id, subShelfId);
+      setSubShelfProducts((prev) => ({ ...prev, [subShelfId]: products }));
+    } catch (err) {
+      setSubShelfProductsError(err instanceof Error ? err.message : "Could not load products.");
+    } finally {
+      setLoadingSubShelfProducts(false);
+    }
+  };
+
+  const loadBoxProducts = async (subShelfId: string, boxId: string) => {
+    if (!shelf) return;
+    setLoadingBoxProducts(true);
+    setBoxProductsError(null);
+    try {
+      const { products } = await getBoxProducts(shelf.storeId, shelf.warehouseId, shelf.id, subShelfId, boxId);
+      setBoxProducts((prev) => ({ ...prev, [boxId]: products }));
+    } catch (err) {
+      setBoxProductsError(err instanceof Error ? err.message : "Could not load products.");
+    } finally {
+      setLoadingBoxProducts(false);
+    }
+  };
+
   if (!shelf) return null;
 
   const goShelf = () => setLevel({ kind: "shelf" });
   const goSubShelf = (subShelf: SubShelf) => {
     setLevel({ kind: "subshelf", subShelf });
     if (!boxesBySubShelf[subShelf.id]) loadBoxes(subShelf.id);
+    if (!subShelfProducts[subShelf.id]) loadSubShelfProducts(subShelf.id);
   };
-  const goBox = (subShelf: SubShelf, box: Box) => setLevel({ kind: "box", subShelf, box });
+  const goBox = (subShelf: SubShelf, box: Box) => {
+    setLevel({ kind: "box", subShelf, box });
+    if (!boxProducts[box.id]) loadBoxProducts(subShelf.id, box.id);
+  };
 
   const handleCreateSubShelf = async (payload: CreateSubShelfPayload) => {
     await createSubShelf(shelf.storeId, shelf.warehouseId, shelf.id, payload);
@@ -213,10 +335,12 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
     } else if (level.kind === "subshelf") {
       await addProductToSubShelf(shelf.storeId, shelf.warehouseId, shelf.id, level.subShelf.id, payload);
       await loadSubShelves(shelf);
+      await loadSubShelfProducts(level.subShelf.id);
     } else if (level.kind === "box") {
       await addProductToBox(shelf.storeId, shelf.warehouseId, shelf.id, level.subShelf.id, level.box.id, payload);
       await loadBoxes(level.subShelf.id);
       await loadSubShelves(shelf);
+      await loadBoxProducts(level.subShelf.id, level.box.id);
     }
     setShowProductModal(false);
     onShelfChanged?.(shelf);
@@ -387,6 +511,29 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
           )}
         </div>
 
+        {/* Product breakdown pie chart — sub-shelf and box levels only */}
+        {level.kind === "subshelf" && (
+          <div className="flex flex-col gap-2.5">
+            <p className="eyebrow text-[10px] text-ink/40">Product breakdown</p>
+            <ProductBreakdownChart
+              products={subShelfProducts[level.subShelf.id] ?? []}
+              loading={loadingSubShelfProducts && !subShelfProducts[level.subShelf.id]}
+              error={subShelfProductsError}
+            />
+          </div>
+        )}
+
+        {level.kind === "box" && (
+          <div className="flex flex-col gap-2.5">
+            <p className="eyebrow text-[10px] text-ink/40">Product breakdown</p>
+            <ProductBreakdownChart
+              products={boxProducts[level.box.id] ?? []}
+              loading={loadingBoxProducts && !boxProducts[level.box.id]}
+              error={boxProductsError}
+            />
+          </div>
+        )}
+
         {/* Chained children list */}
         {level.kind === "shelf" && (
           <div className="flex flex-col gap-2.5">
@@ -438,12 +585,22 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
 
         {level.kind === "box" && (
           <div className="flex flex-col gap-2">
-            <p className="eyebrow text-[10px] text-ink/40">This box</p>
-            <p className="text-xs text-ink/50 leading-relaxed">
-              Use “+ Add product” above to log what's inside. A per-item product list will render
-              here once the box API returns individual product entries rather than just the
-              aggregate count.
-            </p>
+            <p className="eyebrow text-[10px] text-ink/40">Products in this box</p>
+            {(boxProducts[level.box.id] ?? []).length === 0 && !loadingBoxProducts ? (
+              <p className="text-xs text-ink/50">No products logged yet.</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-line/60 border border-line rounded-lg overflow-hidden">
+                {(boxProducts[level.box.id] ?? []).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <p className="text-ink truncate">{p.name}</p>
+                      {p.sku ? <p className="text-[11px] text-ink/40 font-mono">{p.sku}</p> : null}
+                    </div>
+                    <span className="text-xs font-mono text-ink/60 shrink-0">{p.quantity} units</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
