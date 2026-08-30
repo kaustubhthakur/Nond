@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Warehouse } from "@/types/warehouse";
-
+import { shelfApi } from "@/lib/shelfApi";
 interface WarehouseCardProps {
   warehouse: Warehouse;
   onDelete: (warehouse: Warehouse) => Promise<void>;
@@ -13,8 +13,37 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const shelvesUsed = warehouse.shelvesUsed ?? 0;
-  const totalShelves = warehouse.shelfCapacity;
+  // Live shelf usage, fetched from the real source of truth
+  const [usage, setUsage] = useState<{
+    count: number;
+    shelfCapacity: number;
+  } | null>(null);
+  const [usageError, setUsageError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUsage() {
+      try {
+        const res = await shelfApi.list(warehouse.storeId, warehouse.id);
+        if (!cancelled) {
+          setUsage({ count: res.count, shelfCapacity: res.shelfCapacity });
+        }
+      } catch {
+        if (!cancelled) setUsageError(true);
+      }
+    }
+
+    loadUsage();
+    return () => {
+      cancelled = true;
+    };
+  }, [warehouse.storeId, warehouse.id]);
+
+  const hasUsageData = usage !== null;
+  const shelvesUsed = usage?.count ?? 0;
+  const totalShelves = usage?.shelfCapacity ?? warehouse.shelfCapacity;
+
   const shelfPercent =
     totalShelves > 0
       ? Math.min(100, Math.round((shelvesUsed / totalShelves) * 100))
@@ -26,8 +55,6 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
     warehouse.maxSubShelvesPerShelf *
     warehouse.maxBoxesPerSubShelf *
     warehouse.maxProductsPerBox;
-
-  const hasUsageData = warehouse.shelvesUsed !== undefined;
 
   const barColor =
     shelfPercent >= 90
@@ -107,8 +134,10 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
               <>
                 {shelvesUsed} / {totalShelves} ({shelfPercent}%)
               </>
+            ) : usageError ? (
+              <>— / {totalShelves}</>
             ) : (
-              <>0 / {totalShelves}</>
+              <>Loading…</>
             )}
           </span>
         </div>
@@ -123,6 +152,8 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
         <p className="text-xs text-ink/50">
           {hasUsageData
             ? `${shelvesLeft} shelf${shelvesLeft === 1 ? "" : "s"} of space left`
+            : usageError
+            ? "Couldn't load usage"
             : `${totalShelves} shelf${totalShelves === 1 ? "" : "s"} of space available`}
         </p>
       </div>
