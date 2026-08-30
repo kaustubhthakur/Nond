@@ -54,8 +54,7 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  // Overall warehouse fill: total products stored (summed across all shelves)
-  // vs the warehouse's full theoretical product capacity.
+
   const [productsUsed, setProductsUsed] = useState<number | null>(null);
   const [usageError, setUsageError] = useState(false);
 
@@ -157,7 +156,7 @@ export function WarehouseCard({ warehouse, onDelete }: WarehouseCardProps) {
         </p>
       ) : null}
 
-      {/* Overall warehouse fill — ring + numbers */}
+   
       <div className="flex items-center gap-4">
         <FillRing percent={fillPercent} />
         <div className="flex flex-col gap-1 min-w-0">
