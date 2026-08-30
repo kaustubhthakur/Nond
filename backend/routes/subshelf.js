@@ -10,6 +10,8 @@ const {
   getSubShelf,
   updateSubShelf,
   deleteSubShelf,
+  addProduct,
+  getSubShelfProducts,
   getSubShelfOptions,
 } = require("../controllers/subshelfs");
 
@@ -47,6 +49,19 @@ router.delete(
   "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/:subShelfId",
   verifyToken,
   deleteSubShelf
+);
+
+// Add a product directly onto a sub-shelf (no box involved)
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/:subShelfId/products",
+  verifyToken,
+  addProduct
+);
+
+router.get(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/:subShelfId/products",
+  verifyToken,
+  getSubShelfProducts
 );
 
 module.exports = router;

@@ -18,6 +18,33 @@ const getSubShelvesRef = (
     .collection("subShelves");
 };
 
+const getSubShelfRef = (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId
+) => {
+  return getSubShelvesRef(
+    storeId,
+    warehouseId,
+    shelfId
+  ).doc(String(subShelfId));
+};
+
+const getProductsRef = (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId
+) => {
+  return getSubShelfRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  ).collection("products");
+};
+
 exports.createSubShelf = async ({
   storeId,
   warehouseId,
@@ -52,6 +79,7 @@ exports.createSubShelf = async ({
     description: description || null,
 
     maxBoxes: MAX_BOXES,
+    boxCount: 0,
 
     productQuantity: 0,
     capacity: MAX_PRODUCTS,
@@ -91,13 +119,12 @@ exports.getSubShelf = async (
   shelfId,
   subShelfId
 ) => {
-  const subShelfRef = getSubShelvesRef(
+  const doc = await getSubShelfRef(
     storeId,
     warehouseId,
-    shelfId
-  ).doc(String(subShelfId));
-
-  const doc = await subShelfRef.get();
+    shelfId,
+    subShelfId
+  ).get();
 
   if (!doc.exists) {
     return null;
@@ -119,11 +146,12 @@ exports.updateSubShelf = async (
     description,
   }
 ) => {
-  const subShelfRef = getSubShelvesRef(
+  const subShelfRef = getSubShelfRef(
     storeId,
     warehouseId,
-    shelfId
-  ).doc(String(subShelfId));
+    shelfId,
+    subShelfId
+  );
 
   const doc = await subShelfRef.get();
 
@@ -159,11 +187,12 @@ exports.deleteSubShelf = async (
   shelfId,
   subShelfId
 ) => {
-  const subShelfRef = getSubShelvesRef(
+  const subShelfRef = getSubShelfRef(
     storeId,
     warehouseId,
-    shelfId
-  ).doc(String(subShelfId));
+    shelfId,
+    subShelfId
+  );
 
   const doc = await subShelfRef.get();
 
@@ -176,4 +205,102 @@ exports.deleteSubShelf = async (
   return {
     id: subShelfId,
   };
+};
+
+/**
+ * Adds a product straight onto a sub-shelf (no box involved).
+ * Runs in a transaction so concurrent adds can't push productQuantity
+ * past capacity.
+ */
+exports.addProduct = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId,
+  { name, sku, quantity }
+) => {
+  const subShelfRef = getSubShelfRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  );
+
+  const productRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  ).doc();
+
+  return await db.runTransaction(async (transaction) => {
+    const subShelfDoc = await transaction.get(subShelfRef);
+
+    if (!subShelfDoc.exists) {
+      return null;
+    }
+
+    const subShelfData = subShelfDoc.data();
+
+    const currentQuantity = subShelfData.productQuantity || 0;
+    const capacity = subShelfData.capacity || MAX_PRODUCTS;
+    const newQuantity = currentQuantity + quantity;
+
+    if (newQuantity > capacity) {
+      throw new Error(
+        `Sub-shelf only has ${
+          capacity - currentQuantity
+        } unit(s) of space left`
+      );
+    }
+
+    const now = new Date();
+
+    const product = {
+      id: productRef.id,
+
+      storeId: String(storeId),
+      warehouseId: String(warehouseId),
+      shelfId: String(shelfId),
+      subShelfId: String(subShelfId),
+
+      name,
+      sku: sku || null,
+      quantity,
+
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    transaction.set(productRef, product);
+
+    transaction.update(subShelfRef, {
+      productQuantity: newQuantity,
+      availableCapacity: capacity - newQuantity,
+      updatedAt: now,
+    });
+
+    return product;
+  });
+};
+
+exports.getProducts = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId
+) => {
+  const snapshot = await getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  )
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };

@@ -52,6 +52,44 @@ const validateDescription = (
   return null;
 };
 
+const validateProductInput = (
+  name,
+  sku,
+  quantity
+) => {
+  if (
+    typeof name !== "string" ||
+    !name.trim()
+  ) {
+    return "Product name is required";
+  }
+
+  if (name.trim().length > 100) {
+    return "Product name cannot exceed 100 characters";
+  }
+
+  if (
+    sku !== undefined &&
+    sku !== null &&
+    typeof sku !== "string" &&
+    typeof sku !== "number"
+  ) {
+    return "SKU must be a string or number";
+  }
+
+  if (
+    quantity === undefined ||
+    quantity === null ||
+    typeof quantity !== "number" ||
+    !Number.isInteger(quantity) ||
+    quantity <= 0
+  ) {
+    return "Quantity must be a positive integer";
+  }
+
+  return null;
+};
+
 const validateHierarchy = async (
   storeId,
   warehouseId,
@@ -637,6 +675,258 @@ exports.deleteSubShelf = async (
       error:
         err.message ||
         "Failed to delete sub-shelf",
+    });
+  }
+};
+
+// Add a product directly onto a sub-shelf (no box).
+exports.addProduct = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+    } = req.params;
+
+    const {
+      name,
+      sku,
+      quantity,
+    } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and sub-shelf ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const subShelf =
+      await SubShelf.getSubShelf(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (!subShelf) {
+      return res.status(404).json({
+        error: "Sub-shelf not found",
+      });
+    }
+
+    const inputError =
+      validateProductInput(
+        name,
+        sku,
+        quantity
+      );
+
+    if (inputError) {
+      return res.status(400).json({
+        error: inputError,
+      });
+    }
+
+    const availableSpace =
+      subShelf.capacity -
+      subShelf.productQuantity;
+
+    if (quantity > availableSpace) {
+      return res.status(409).json({
+        error: `Sub-shelf only has ${availableSpace} unit(s) of space left`,
+        capacity: subShelf.capacity,
+        currentQuantity:
+          subShelf.productQuantity,
+        availableSpace,
+      });
+    }
+
+    let product;
+
+    try {
+      product =
+        await SubShelf.addProduct(
+          storeId,
+          warehouseId,
+          shelfId,
+          subShelfId,
+          {
+            name: name.trim(),
+            sku:
+              sku !== undefined &&
+              sku !== null
+                ? String(sku).trim()
+                : null,
+            quantity,
+          }
+        );
+    } catch (err) {
+      // Transaction rejected it, most likely a capacity race.
+      return res.status(409).json({
+        error: err.message,
+      });
+    }
+
+    if (!product) {
+      return res.status(404).json({
+        error: "Sub-shelf not found",
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Product added to sub-shelf successfully",
+      product,
+    });
+  } catch (err) {
+    console.error(
+      "Add product to sub-shelf error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to add product to sub-shelf",
+    });
+  }
+};
+
+exports.getSubShelfProducts = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and sub-shelf ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const subShelf =
+      await SubShelf.getSubShelf(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (!subShelf) {
+      return res.status(404).json({
+        error: "Sub-shelf not found",
+      });
+    }
+
+    const products =
+      await SubShelf.getProducts(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      capacity: subShelf.capacity,
+      productQuantity:
+        subShelf.productQuantity,
+      products,
+    });
+  } catch (err) {
+    console.error(
+      "Get sub-shelf products error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get sub-shelf products",
     });
   }
 };
