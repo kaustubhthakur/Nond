@@ -70,10 +70,7 @@ export default function WarehouseShelvesPage() {
     setShowCreateModal(false);
   };
 
-  // Fired by ShelfDrilldown after a sub-shelf/box/product action changes
-  // this shelf's own productQuantity/availableCapacity. Refetches just
-  // this one shelf so its card reflects the real backend numbers without
-  // a full page reload.
+ 
   const handleShelfChanged = useCallback(
     async (shelf: Shelf) => {
       if (!store) return;
@@ -83,7 +80,7 @@ export default function WarehouseShelvesPage() {
           prev.map((s) => (s.id === shelf.id ? res.shelf : s))
         );
       } catch {
-        // Non-fatal — the card just won't refresh until the next full load.
+  
       }
     },
     [store, warehouseId]

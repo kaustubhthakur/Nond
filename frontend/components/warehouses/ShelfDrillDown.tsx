@@ -109,7 +109,7 @@ function NodeCard({
   );
 }
 
-/** Pie chart of product quantities for the current sub-shelf/box. */
+
 function ProductBreakdownChart({
   products,
   loading,
@@ -172,11 +172,7 @@ type Level =
   | { kind: "subshelf"; subShelf: SubShelf }
   | { kind: "box"; subShelf: SubShelf; box: Box };
 
-/**
- * Full-page drilldown that chains shelf → sub-shelf → box navigation.
- * Mount once per page and control it by passing the currently-open `shelf`
- * (or `null` to keep it closed).
- */
+
 export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }: ShelfDrilldownProps) {
   const open = !!shelf;
   const [visible, setVisible] = useState(false);
@@ -534,7 +530,7 @@ export function ShelfDrilldown({ shelf, onClose, onDeleteShelf, onShelfChanged }
           </div>
         )}
 
-        {/* Chained children list */}
+      
         {level.kind === "shelf" && (
           <div className="flex flex-col gap-2.5">
             <p className="eyebrow text-[10px] text-ink/40">Sub-shelves</p>

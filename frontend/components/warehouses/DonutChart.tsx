@@ -15,11 +15,7 @@ interface DonutChartProps {
   trackColor?: string;
 }
 
-/**
- * A multi-segment donut/pie chart built from stacked SVG circle strokes.
- * Pass 2+ segments (e.g. one per product, plus a muted "Available" segment)
- * to get real product distinction rather than a flat used/free ring.
- */
+
 export function DonutChart({
   segments,
   size = 120,
@@ -96,7 +92,7 @@ export function DonutChart({
   );
 }
 
-/** Curated palette for per-product slices — extend/replace with your brand's secondary colors. */
+
 export const PRODUCT_PALETTE = [
   "var(--color-accent)",
   "#C08A2E", // ochre
@@ -126,11 +122,7 @@ export function capacitySegments(
   return segments;
 }
 
-/**
- * Per-product slices + a muted "Available" remainder.
- * Falls back to the plain used/available ring when no product breakdown is supplied
- * (e.g. until the API returns a per-item quantity list for a shelf/sub-shelf/box).
- */
+
 export function productSegments(
   products: { name: string; quantity: number }[] | undefined,
   used: number,
