@@ -119,7 +119,7 @@ export default function WarehouseShelvesPage() {
   const atShelfCapacity = shelfCapacity > 0 && availableShelves <= 0;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <Link
         href="/warehouses"
         className="text-xs text-ink/50 hover:text-accent transition-colors"
