@@ -31,6 +31,20 @@ const getSubShelfRef = (
   ).doc(String(subShelfId));
 };
 
+const getShelfRef = (
+  storeId,
+  warehouseId,
+  shelfId
+) => {
+  return db
+    .collection("stores")
+    .doc(String(storeId))
+    .collection("warehouses")
+    .doc(String(warehouseId))
+    .collection("shelves")
+    .doc(String(shelfId));
+};
+
 const getProductsRef = (
   storeId,
   warehouseId,
@@ -181,6 +195,10 @@ exports.updateSubShelf = async (
   };
 };
 
+/**
+ * Deletes a sub-shelf and gives back whatever product-space it was
+ * consuming on the parent shelf, in a single transaction.
+ */
 exports.deleteSubShelf = async (
   storeId,
   warehouseId,
@@ -193,11 +211,40 @@ exports.deleteSubShelf = async (
     shelfId,
     subShelfId
   );
+  const shelfRef = getShelfRef(
+    storeId,
+    warehouseId,
+    shelfId
+  );
 
   const doc = await subShelfRef.get();
 
   if (!doc.exists) {
     return null;
+  }
+
+  const subShelfData = doc.data();
+  const reclaimedQuantity = subShelfData.productQuantity || 0;
+
+  if (reclaimedQuantity > 0) {
+    await db.runTransaction(async (transaction) => {
+      const shelfDoc = await transaction.get(shelfRef);
+
+      if (shelfDoc.exists) {
+        const shelfData = shelfDoc.data();
+        const shelfCapacity = shelfData.capacity || 0;
+        const newShelfQuantity = Math.max(
+          0,
+          (shelfData.productQuantity || 0) - reclaimedQuantity
+        );
+
+        transaction.update(shelfRef, {
+          productQuantity: newShelfQuantity,
+          availableCapacity: shelfCapacity - newShelfQuantity,
+          updatedAt: new Date(),
+        });
+      }
+    });
   }
 
   await db.recursiveDelete(subShelfRef);
@@ -210,7 +257,10 @@ exports.deleteSubShelf = async (
 /**
  * Adds a product straight onto a sub-shelf (no box involved).
  * Runs in a transaction so concurrent adds can't push productQuantity
- * past capacity.
+ * past capacity — and rolls the same quantity up onto the parent
+ * shelf's own productQuantity/availableCapacity in the same
+ * transaction, so shelf-level and sub-shelf-level numbers can never
+ * drift apart.
  */
 exports.addProduct = async (
   storeId,
@@ -224,6 +274,12 @@ exports.addProduct = async (
     warehouseId,
     shelfId,
     subShelfId
+  );
+
+  const shelfRef = getShelfRef(
+    storeId,
+    warehouseId,
+    shelfId
   );
 
   const productRef = getProductsRef(
@@ -240,6 +296,12 @@ exports.addProduct = async (
       return null;
     }
 
+    const shelfDoc = await transaction.get(shelfRef);
+
+    if (!shelfDoc.exists) {
+      throw new Error("Parent shelf not found");
+    }
+
     const subShelfData = subShelfDoc.data();
 
     const currentQuantity = subShelfData.productQuantity || 0;
@@ -251,6 +313,19 @@ exports.addProduct = async (
         `Sub-shelf only has ${
           capacity - currentQuantity
         } unit(s) of space left`
+      );
+    }
+
+    const shelfData = shelfDoc.data();
+    const shelfCapacity = shelfData.capacity || 0;
+    const shelfCurrentQuantity = shelfData.productQuantity || 0;
+    const newShelfQuantity = shelfCurrentQuantity + quantity;
+
+    if (newShelfQuantity > shelfCapacity) {
+      throw new Error(
+        `Shelf only has ${
+          shelfCapacity - shelfCurrentQuantity
+        } unit(s) of space left overall`
       );
     }
 
@@ -277,6 +352,12 @@ exports.addProduct = async (
     transaction.update(subShelfRef, {
       productQuantity: newQuantity,
       availableCapacity: capacity - newQuantity,
+      updatedAt: now,
+    });
+
+    transaction.update(shelfRef, {
+      productQuantity: newShelfQuantity,
+      availableCapacity: shelfCapacity - newShelfQuantity,
       updatedAt: now,
     });
 
