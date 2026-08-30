@@ -9,6 +9,13 @@ import {
   deleteSubShelf,
 } from "@/lib/subshelf";
 import type { SubShelf } from "@/types/subshelf";
+import {
+  getBoxes,
+  createBox,
+  addProductToBox,
+  deleteBox,
+} from "@/lib/box";
+import type { Box } from "@/types/box";
 
 interface ShelfCardProps {
   shelf: Shelf;
@@ -42,6 +49,25 @@ export function ShelfCard({
   const [productSku, setProductSku] = useState("");
   const [productQty, setProductQty] = useState("");
   const [savingProduct, setSavingProduct] = useState(false);
+
+  // Box state, keyed by sub-shelf id so each sub-shelf's boxes are independent.
+  const [expandedBoxesFor, setExpandedBoxesFor] = useState<string | null>(null);
+  const [boxesBySubShelf, setBoxesBySubShelf] = useState<Record<string, Box[]>>({});
+  const [loadingBoxes, setLoadingBoxes] = useState(false);
+  const [boxError, setBoxError] = useState<string | null>(null);
+
+  const [creatingBoxFor, setCreatingBoxFor] = useState<string | null>(null);
+  const [newBoxName, setNewBoxName] = useState("");
+  const [savingBox, setSavingBox] = useState(false);
+
+  const [boxProductModalFor, setBoxProductModalFor] = useState<{
+    subShelfId: string;
+    boxId: string;
+  } | null>(null);
+  const [boxProductName, setBoxProductName] = useState("");
+  const [boxProductSku, setBoxProductSku] = useState("");
+  const [boxProductQty, setBoxProductQty] = useState("");
+  const [savingBoxProduct, setSavingBoxProduct] = useState(false);
 
   const percent =
     shelf.capacity > 0
@@ -100,7 +126,6 @@ export function ShelfCard({
       });
       setNewSubShelfName("");
       setCreatingSubShelf(false);
-
       await loadSubShelves();
     } catch (err) {
       setSubShelfError(
@@ -150,6 +175,93 @@ export function ShelfCard({
       );
     } finally {
       setSavingProduct(false);
+    }
+  };
+
+  // --- Boxes ---
+
+  const loadBoxes = async (subShelfId: string) => {
+    setLoadingBoxes(true);
+    setBoxError(null);
+    try {
+      const { boxes } = await getBoxes(
+        shelf.storeId,
+        shelf.warehouseId,
+        shelf.id,
+        subShelfId
+      );
+      setBoxesBySubShelf((prev) => ({ ...prev, [subShelfId]: boxes }));
+    } catch (err) {
+      setBoxError(err instanceof Error ? err.message : "Could not load boxes.");
+    } finally {
+      setLoadingBoxes(false);
+    }
+  };
+
+  const toggleBoxesExpanded = (subShelfId: string) => {
+    const next = expandedBoxesFor === subShelfId ? null : subShelfId;
+    setExpandedBoxesFor(next);
+    if (next && !boxesBySubShelf[subShelfId]) {
+      loadBoxes(subShelfId);
+    }
+  };
+
+  const handleCreateBox = async (subShelfId: string) => {
+    if (!newBoxName.trim()) return;
+    setSavingBox(true);
+    try {
+      await createBox(shelf.storeId, shelf.warehouseId, shelf.id, subShelfId, {
+        name: newBoxName.trim(),
+      });
+      setNewBoxName("");
+      setCreatingBoxFor(null);
+      await loadBoxes(subShelfId);
+    } catch (err) {
+      setBoxError(err instanceof Error ? err.message : "Could not create box.");
+    } finally {
+      setSavingBox(false);
+    }
+  };
+
+  const handleDeleteBox = async (subShelfId: string, boxId: string) => {
+    try {
+      await deleteBox(shelf.storeId, shelf.warehouseId, shelf.id, subShelfId, boxId);
+      await loadBoxes(subShelfId);
+      await loadSubShelves();
+      onShelfChanged?.(shelf);
+    } catch (err) {
+      setBoxError(err instanceof Error ? err.message : "Could not delete box.");
+    }
+  };
+
+  const handleAddProductToBox = async () => {
+    if (!boxProductModalFor || !boxProductName.trim() || !boxProductQty) return;
+    const { subShelfId, boxId } = boxProductModalFor;
+    setSavingBoxProduct(true);
+    try {
+      await addProductToBox(
+        shelf.storeId,
+        shelf.warehouseId,
+        shelf.id,
+        subShelfId,
+        boxId,
+        {
+          name: boxProductName.trim(),
+          sku: boxProductSku.trim() || undefined,
+          quantity: parseInt(boxProductQty, 10),
+        }
+      );
+      setBoxProductModalFor(null);
+      setBoxProductName("");
+      setBoxProductSku("");
+      setBoxProductQty("");
+      await loadBoxes(subShelfId);
+      await loadSubShelves();
+      onShelfChanged?.(shelf);
+    } catch (err) {
+      setBoxError(err instanceof Error ? err.message : "Could not add product.");
+    } finally {
+      setSavingBoxProduct(false);
     }
   };
 
@@ -299,6 +411,8 @@ export function ShelfCard({
                       )
                     : 0;
                 const subFull = subShelf.availableCapacity <= 0;
+                const boxesExpanded = expandedBoxesFor === subShelf.id;
+                const boxes = boxesBySubShelf[subShelf.id] ?? [];
 
                 return (
                   <div
@@ -347,13 +461,119 @@ export function ShelfCard({
                       </button>
                       <button
                         type="button"
-                        disabled
-                        title="Boxes coming soon"
-                        className="eyebrow border border-ink/20 px-2 py-1.5 text-[11px] text-ink/30 cursor-not-allowed"
+                        onClick={() => setCreatingBoxFor(subShelf.id)}
+                        className="eyebrow border border-ink/20 px-2 py-1.5 text-[11px] text-ink/70 hover:border-accent hover:text-accent transition-colors"
                       >
                         + Add box
                       </button>
                     </div>
+
+                    {creatingBoxFor === subShelf.id && (
+                      <div className="border border-line bg-paper/60 p-2 flex items-center gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={newBoxName}
+                          onChange={(e) => setNewBoxName(e.target.value)}
+                          placeholder="Box name"
+                          className="flex-1 border-b border-line bg-transparent py-1 text-xs focus:outline-none focus:border-accent"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCreateBox(subShelf.id)}
+                          disabled={savingBox}
+                          className="eyebrow bg-accent px-2 py-1 text-[11px] text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+                        >
+                          {savingBox ? "Saving…" : "Create"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCreatingBoxFor(null)}
+                          className="eyebrow text-[11px] text-ink/50 hover:text-ink px-1"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => toggleBoxesExpanded(subShelf.id)}
+                      className="text-[11px] text-ink/50 hover:text-accent transition-colors text-left mt-1"
+                    >
+                      {boxesExpanded ? "▾ Hide boxes" : "▸ View boxes"}
+                    </button>
+
+                    {boxesExpanded && (
+                      <div className="flex flex-col gap-2 pt-1 border-t border-line/50">
+                        {boxError && (
+                          <p className="text-[11px] text-red-700 mt-2">{boxError}</p>
+                        )}
+                        {loadingBoxes && boxes.length === 0 ? (
+                          <p className="text-[11px] text-ink/50 mt-2">Loading boxes…</p>
+                        ) : boxes.length === 0 ? (
+                          <p className="text-[11px] text-ink/50 mt-2">No boxes yet.</p>
+                        ) : (
+                          boxes.map((box) => {
+                            const boxPct =
+                              box.capacity > 0
+                                ? Math.min(
+                                    100,
+                                    Math.round(
+                                      (box.productQuantity / box.capacity) * 100
+                                    )
+                                  )
+                                : 0;
+                            const boxFull = box.availableCapacity <= 0;
+
+                            return (
+                              <div
+                                key={box.id}
+                                className="border border-line/50 bg-paper/60 p-2 flex flex-col gap-1.5 mt-2"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="font-mono text-xs text-ink truncate">
+                                    {box.name}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteBox(subShelf.id, box.id)}
+                                    className="eyebrow text-[10px] border border-ink/20 px-1.5 py-0.5 text-ink/60 hover:border-rust hover:text-rust transition-colors shrink-0"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                                <div className="flex items-baseline justify-between text-[10px] text-ink/60">
+                                  <span className="eyebrow">Products</span>
+                                  <span>
+                                    {box.productQuantity} / {box.capacity} ({boxPct}%)
+                                  </span>
+                                </div>
+                                <div className="h-1 w-full bg-ink/10 overflow-hidden">
+                                  <div
+                                    className={`h-full ${boxFull ? "bg-rust" : "bg-accent"}`}
+                                    style={{ width: `${boxPct}%` }}
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setBoxProductModalFor({
+                                      subShelfId: subShelf.id,
+                                      boxId: box.id,
+                                    })
+                                  }
+                                  disabled={boxFull}
+                                  className="eyebrow border border-ink/20 px-2 py-1 text-[10px] text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 mt-0.5"
+                                >
+                                  {boxFull ? "Box full" : "+ Add product"}
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -406,6 +626,56 @@ export function ShelfCard({
                 className="bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
               >
                 {savingProduct ? "Adding…" : "Add product"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {boxProductModalFor && (
+        <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-20 px-4">
+          <div className="border border-line bg-paper p-6 w-full max-w-sm">
+            <h3 className="font-display text-lg text-ink mb-4">Add product to box</h3>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={boxProductName}
+                onChange={(e) => setBoxProductName(e.target.value)}
+                placeholder="Product name"
+                className="w-full border-b border-line bg-transparent py-2 text-sm focus:outline-none focus:border-accent"
+                autoFocus
+              />
+              <input
+                type="text"
+                value={boxProductSku}
+                onChange={(e) => setBoxProductSku(e.target.value)}
+                placeholder="SKU (optional)"
+                className="w-full border-b border-line bg-transparent py-2 text-sm focus:outline-none focus:border-accent"
+              />
+              <input
+                type="number"
+                min={1}
+                value={boxProductQty}
+                onChange={(e) => setBoxProductQty(e.target.value)}
+                placeholder="Quantity"
+                className="w-full border-b border-line bg-transparent py-2 text-sm focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setBoxProductModalFor(null)}
+                className="text-sm text-ink/50 hover:text-ink"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddProductToBox}
+                disabled={savingBoxProduct}
+                className="bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+              >
+                {savingBoxProduct ? "Adding…" : "Add product"}
               </button>
             </div>
           </div>
