@@ -166,42 +166,7 @@ export default function ProfilePage() {
           </dl>
         </div>
       </section>
-
-      {/* Store inventory overview */}
-      {store ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="eyebrow text-ink/50 text-xs tracking-widest uppercase">
-              {store.store_name} · inventory overview
-            </h2>
-            <button
-              type="button"
-              onClick={refetchStats}
-              disabled={loadingStats}
-              className="eyebrow text-[11px] text-ink/40 hover:text-accent transition-colors disabled:opacity-50"
-            >
-              {loadingStats ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
-
-          {statsError ? (
-            <div className="border border-rust/40 bg-rust/5 text-rust text-sm px-4 py-3 rounded-lg">
-              {statsError}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard label="Warehouses" value={stats?.warehouses} loading={loadingStats && !stats} />
-              <StatCard label="Shelves" value={stats?.shelves} loading={loadingStats && !stats} />
-              <StatCard label="Subshelves" value={stats?.subshelves} loading={loadingStats && !stats} />
-              <StatCard label="Boxes" value={stats?.boxes} loading={loadingStats && !stats} />
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="rounded-xl border border-dashed border-line px-6 py-10 text-center">
-          <p className="text-sm text-ink/50">You haven&apos;t set up a store yet.</p>
-        </section>
-      )}
+    
     </div>
   );
 }
