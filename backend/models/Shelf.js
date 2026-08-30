@@ -177,3 +177,92 @@ exports.deleteShelf = async (
     id: shelfId,
   };
 };
+
+exports.addProductToShelf = async ({
+  storeId,
+  warehouseId,
+  shelfId,
+  productId,
+  quantity,
+}) => {
+  const shelfRef = getShelvesRef(
+    storeId,
+    warehouseId
+  ).doc(String(shelfId));
+
+  const shelf = await shelfRef.get();
+
+  if (!shelf.exists) {
+    throw new Error("Shelf not found");
+  }
+
+  const shelfData = shelf.data();
+
+  const productsRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId
+  );
+
+  const productRef = productsRef.doc(
+    String(productId)
+  );
+
+  const existing = await productRef.get();
+
+  const currentQuantity =
+    shelfData.productQuantity || 0;
+
+  const addQuantity = Number(quantity);
+
+  if (
+    !Number.isInteger(addQuantity) ||
+    addQuantity <= 0
+  ) {
+    throw new Error(
+      "Quantity must be a positive integer"
+    );
+  }
+
+  const existingQuantity = existing.exists
+    ? Number(existing.data().quantity || 0)
+    : 0;
+
+  const newQuantity =
+    currentQuantity + addQuantity;
+
+  if (newQuantity > MAX_PRODUCTS) {
+    throw new Error(
+      `Shelf can contain maximum ${MAX_PRODUCTS} products`
+    );
+  }
+
+  const product = {
+    id: String(productId),
+    productId: String(productId),
+
+    storeId: String(storeId),
+    warehouseId: String(warehouseId),
+    shelfId: String(shelfId),
+
+    quantity:
+      existingQuantity + addQuantity,
+
+    createdAt: existing.exists
+      ? existing.data().createdAt
+      : new Date(),
+
+    updatedAt: new Date(),
+  };
+
+  await productRef.set(product);
+
+  await shelfRef.update({
+    productQuantity: newQuantity,
+    availableCapacity:
+      MAX_PRODUCTS - newQuantity,
+    updatedAt: new Date(),
+  });
+
+  return product;
+};
