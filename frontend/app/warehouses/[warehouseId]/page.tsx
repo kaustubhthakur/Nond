@@ -107,6 +107,26 @@ export default function WarehouseShelvesPage() {
     router.push(`/warehouses/${warehouseId}/shelves/${shelf.id}`);
   };
 
+  // Fired by ShelfCard after a sub-shelf action changes this shelf's own
+  // productQuantity/availableCapacity (e.g. adding a product inside a
+  // sub-shelf, or deleting a sub-shelf that reclaims space). Refetches
+  // just this one shelf so its card reflects the real backend numbers
+  // without a full page reload.
+  const handleShelfChanged = useCallback(
+    async (shelf: Shelf) => {
+      if (!store) return;
+      try {
+        const res = await shelfApi.get(store.id, warehouseId, shelf.id);
+        setShelves((prev) =>
+          prev.map((s) => (s.id === shelf.id ? res.shelf : s))
+        );
+      } catch {
+        // Non-fatal — the card just won't refresh until the next full load.
+      }
+    },
+    [store, warehouseId]
+  );
+
   const handleDelete = async (shelf: Shelf) => {
     if (!store) return;
     try {
@@ -196,6 +216,7 @@ export default function WarehouseShelvesPage() {
               onDelete={handleDelete}
               onAddProduct={setProductModalShelf}
               onAddSubShelf={handleAddSubShelf}
+              onShelfChanged={handleShelfChanged}
             />
           ))}
         </div>

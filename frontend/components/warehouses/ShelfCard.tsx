@@ -15,6 +15,7 @@ interface ShelfCardProps {
   onDelete: (shelf: Shelf) => Promise<void>;
   onAddProduct: (shelf: Shelf) => void;
   onAddSubShelf: (shelf: Shelf) => void;
+  onShelfChanged?: (shelf: Shelf) => void;
 }
 
 export function ShelfCard({
@@ -22,6 +23,7 @@ export function ShelfCard({
   onDelete,
   onAddProduct,
   onAddSubShelf,
+  onShelfChanged,
 }: ShelfCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -98,7 +100,7 @@ export function ShelfCard({
       });
       setNewSubShelfName("");
       setCreatingSubShelf(false);
-      onAddSubShelf(shelf);
+
       await loadSubShelves();
     } catch (err) {
       setSubShelfError(
@@ -113,6 +115,7 @@ export function ShelfCard({
     try {
       await deleteSubShelf(shelf.storeId, shelf.warehouseId, shelf.id, subShelfId);
       await loadSubShelves();
+      onShelfChanged?.(shelf);
     } catch (err) {
       setSubShelfError(
         err instanceof Error ? err.message : "Could not delete sub-shelf."
@@ -140,6 +143,7 @@ export function ShelfCard({
       setProductSku("");
       setProductQty("");
       await loadSubShelves();
+      onShelfChanged?.(shelf);
     } catch (err) {
       setSubShelfError(
         err instanceof Error ? err.message : "Could not add product."
