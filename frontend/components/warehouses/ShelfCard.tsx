@@ -16,6 +16,7 @@ import {
   deleteBox,
 } from "@/lib/box";
 import type { Box } from "@/types/box";
+import { CapacityRing } from "./CapacityRing";
 
 interface ShelfCardProps {
   shelf: Shelf;
@@ -23,6 +24,20 @@ interface ShelfCardProps {
   onAddProduct: (shelf: Shelf) => void;
   onAddSubShelf: (shelf: Shelf) => void;
   onShelfChanged?: (shelf: Shelf) => void;
+}
+
+function StatusPill({ full }: { full: boolean }) {
+  return (
+    <span
+      className={`eyebrow text-[10px] px-2 py-0.5 rounded-full ${
+        full
+          ? "bg-rust/10 text-rust"
+          : "bg-accent/10 text-accent"
+      }`}
+    >
+      {full ? "Full" : "Open"}
+    </span>
+  );
 }
 
 export function ShelfCard({
@@ -50,7 +65,6 @@ export function ShelfCard({
   const [productQty, setProductQty] = useState("");
   const [savingProduct, setSavingProduct] = useState(false);
 
-  // Box state, keyed by sub-shelf id so each sub-shelf's boxes are independent.
   const [expandedBoxesFor, setExpandedBoxesFor] = useState<string | null>(null);
   const [boxesBySubShelf, setBoxesBySubShelf] = useState<Record<string, Box[]>>({});
   const [loadingBoxes, setLoadingBoxes] = useState(false);
@@ -69,16 +83,7 @@ export function ShelfCard({
   const [boxProductQty, setBoxProductQty] = useState("");
   const [savingBoxProduct, setSavingBoxProduct] = useState(false);
 
-  const percent =
-    shelf.capacity > 0
-      ? Math.min(
-          100,
-          Math.round((shelf.productQuantity / shelf.capacity) * 100)
-        )
-      : 0;
-
-  const barColor =
-    percent >= 90 ? "bg-rust" : percent >= 65 ? "bg-accent/70" : "bg-accent";
+  const shelfFull = shelf.availableCapacity <= 0;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -178,8 +183,6 @@ export function ShelfCard({
     }
   };
 
-  // --- Boxes ---
-
   const loadBoxes = async (subShelfId: string) => {
     setLoadingBoxes(true);
     setBoxError(null);
@@ -266,325 +269,298 @@ export function ShelfCard({
   };
 
   return (
-    <div className="border border-line bg-paper p-5 flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-display italic text-lg text-ink tracking-wide truncate">
-            {shelf.name}
-          </h3>
-          <p className="text-xs text-ink/50 mt-0.5">
-            Up to {shelf.maxSubShelves} sub-shelves
-          </p>
-        </div>
+    <div className="rounded-xl border border-line bg-paper shadow-sm overflow-hidden flex flex-col">
+      {/* Shelf header */}
+      <div className="p-5 flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex items-center gap-3">
+            <CapacityRing used={shelf.productQuantity} capacity={shelf.capacity} size={52} thickness={6} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-display italic text-lg text-ink tracking-wide truncate">
+                  {shelf.name}
+                </h3>
+                <StatusPill full={shelfFull} />
+              </div>
+              <p className="text-xs text-ink/50 mt-0.5 font-mono">
+                {shelf.productQuantity.toLocaleString()} / {shelf.capacity.toLocaleString()} units
+              </p>
+            </div>
+          </div>
 
-        {!confirming ? (
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            className="eyebrow shrink-0 border border-ink/20 px-2.5 py-1 text-ink/60 hover:border-rust hover:text-rust transition-colors"
-          >
-            Delete
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 shrink-0">
+          {!confirming ? (
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="eyebrow border border-rust text-rust px-2.5 py-1 hover:bg-rust hover:text-paper transition-colors disabled:opacity-50"
+              onClick={() => setConfirming(true)}
+              className="eyebrow shrink-0 text-[11px] text-ink/40 hover:text-rust transition-colors"
             >
-              {deleting ? "Deleting…" : "Confirm"}
+              Delete
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="eyebrow text-[11px] text-rust hover:underline disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Confirm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                disabled={deleting}
+                className="eyebrow text-[11px] text-ink/40 hover:text-ink"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {shelf.description ? (
+          <p className="text-sm text-ink/70 leading-relaxed -mt-1">
+            {shelf.description}
+          </p>
+        ) : null}
+
+        <p className="text-xs text-ink/40">
+          {shelf.availableCapacity.toLocaleString()} unit
+          {shelf.availableCapacity === 1 ? "" : "s"} left · up to {shelf.maxSubShelves} sub-shelves
+        </p>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onAddProduct(shelf)}
+            disabled={shelfFull}
+            className="flex-1 eyebrow rounded-lg border border-ink/15 px-3 py-2 text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+          >
+            {shelfFull ? "Shelf full" : "+ Add product"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreatingSubShelf((v) => !v)}
+            className="flex-1 eyebrow rounded-lg border border-ink/15 px-3 py-2 text-ink/70 hover:border-accent hover:text-accent transition-colors"
+          >
+            + Add sub-shelf
+          </button>
+        </div>
+
+        {creatingSubShelf && (
+          <div className="rounded-lg border border-line bg-paper/60 p-3 flex items-center gap-2">
+            <input
+              type="text"
+              value={newSubShelfName}
+              onChange={(e) => setNewSubShelfName(e.target.value)}
+              placeholder="Sub-shelf name"
+              className="flex-1 border-b border-line bg-transparent py-1.5 text-sm focus:outline-none focus:border-accent"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={handleCreateSubShelf}
+              disabled={savingSubShelf}
+              className="eyebrow rounded-lg bg-accent px-3 py-1.5 text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+            >
+              {savingSubShelf ? "Saving…" : "Create"}
             </button>
             <button
               type="button"
-              onClick={() => setConfirming(false)}
-              disabled={deleting}
-              className="eyebrow border border-ink/20 px-2.5 py-1 text-ink/60 hover:text-ink transition-colors disabled:opacity-50"
+              onClick={() => setCreatingSubShelf(false)}
+              className="eyebrow text-ink/50 hover:text-ink px-2"
             >
               Cancel
             </button>
           </div>
         )}
-      </div>
 
-      {shelf.description ? (
-        <p className="text-sm text-ink/70 leading-relaxed">
-          {shelf.description}
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-baseline justify-between text-xs text-ink/60">
-          <span className="eyebrow">Products stored</span>
-          <span>
-            {shelf.productQuantity} / {shelf.capacity} ({percent}%)
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          className="text-xs text-ink/50 hover:text-accent transition-colors text-left flex items-center gap-1"
+        >
+          <span className="inline-block transition-transform" style={{ transform: expanded ? "rotate(90deg)" : "none" }}>
+            ›
           </span>
-        </div>
-
-        <div className="h-2 w-full bg-ink/10 overflow-hidden">
-          <div
-            className={`h-full ${barColor} transition-all`}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-
-        <p className="text-xs text-ink/50">
-          {shelf.availableCapacity.toLocaleString()} unit
-          {shelf.availableCapacity === 1 ? "" : "s"} of space left
-        </p>
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onAddProduct(shelf)}
-          disabled={shelf.availableCapacity <= 0}
-          className="flex-1 eyebrow border border-ink/20 px-3 py-1.5 text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
-        >
-          {shelf.availableCapacity <= 0 ? "Shelf full" : "+ Add product"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setCreatingSubShelf(true)}
-          className="flex-1 eyebrow border border-ink/20 px-3 py-1.5 text-ink/70 hover:border-accent hover:text-accent transition-colors"
-        >
-          + Add sub-shelf
+          {expanded
+            ? "Hide sub-shelves"
+            : `View sub-shelves${subShelves.length ? ` (${subShelves.length})` : ""}`}
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={toggleExpanded}
-        className="text-xs text-ink/50 hover:text-accent transition-colors text-left"
-      >
-        {expanded ? "▾ Hide sub-shelves" : "▸ View sub-shelves"}
-      </button>
-
-      {creatingSubShelf && (
-        <div className="border border-line bg-paper/60 p-3 flex items-center gap-2">
-          <input
-            type="text"
-            value={newSubShelfName}
-            onChange={(e) => setNewSubShelfName(e.target.value)}
-            placeholder="Sub-shelf name"
-            className="flex-1 border-b border-line bg-transparent py-1.5 text-sm focus:outline-none focus:border-accent"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={handleCreateSubShelf}
-            disabled={savingSubShelf}
-            className="eyebrow bg-accent px-3 py-1.5 text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
-          >
-            {savingSubShelf ? "Saving…" : "Create"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreatingSubShelf(false)}
-            className="eyebrow text-ink/50 hover:text-ink px-2"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
+      {/* Sub-shelves */}
       {expanded && (
-        <div className="flex flex-col gap-3 pt-1 border-t border-line">
-          {subShelfError && (
-            <p className="text-xs text-red-700 mt-3">{subShelfError}</p>
-          )}
+        <div className="bg-ink/[0.03] border-t border-line px-5 py-4 flex flex-col gap-3">
+          {subShelfError && <p className="text-xs text-rust">{subShelfError}</p>}
 
           {loadingSubShelves ? (
-            <p className="text-xs text-ink/50 mt-3">Loading sub-shelves…</p>
+            <p className="text-xs text-ink/50">Loading sub-shelves…</p>
           ) : subShelves.length === 0 ? (
-            <p className="text-xs text-ink/50 mt-3">No sub-shelves yet.</p>
+            <p className="text-xs text-ink/50">No sub-shelves yet.</p>
           ) : (
-            <div className="flex flex-col gap-3 mt-3">
-              {subShelves.map((subShelf) => {
-                const subPct =
-                  subShelf.capacity > 0
-                    ? Math.min(
-                        100,
-                        Math.round(
-                          (subShelf.productQuantity / subShelf.capacity) * 100
-                        )
-                      )
-                    : 0;
-                const subFull = subShelf.availableCapacity <= 0;
-                const boxesExpanded = expandedBoxesFor === subShelf.id;
-                const boxes = boxesBySubShelf[subShelf.id] ?? [];
+            subShelves.map((subShelf) => {
+              const subFull = subShelf.availableCapacity <= 0;
+              const boxesExpanded = expandedBoxesFor === subShelf.id;
+              const boxes = boxesBySubShelf[subShelf.id] ?? [];
 
-                return (
-                  <div
-                    key={subShelf.id}
-                    className="border border-line/70 bg-paper/40 p-3 flex flex-col gap-2"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-display italic text-sm text-ink truncate">
-                          {subShelf.name}
-                        </p>
-                        <p className="text-[11px] text-ink/50">
-                          Up to {subShelf.maxBoxes} boxes
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSubShelf(subShelf.id)}
-                        className="eyebrow text-[11px] border border-ink/20 px-2 py-0.5 text-ink/60 hover:border-rust hover:text-rust transition-colors shrink-0"
-                      >
-                        Delete
-                      </button>
-                    </div>
-
-                    <div className="flex items-baseline justify-between text-[11px] text-ink/60">
-                      <span className="eyebrow">Products</span>
-                      <span>
-                        {subShelf.productQuantity} / {subShelf.capacity} ({subPct}%)
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-ink/10 overflow-hidden">
-                      <div
-                        className={`h-full ${subFull ? "bg-rust" : "bg-accent"}`}
-                        style={{ width: `${subPct}%` }}
+              return (
+                <div
+                  key={subShelf.id}
+                  className="rounded-lg border border-line/70 bg-paper p-3 flex flex-col gap-2.5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CapacityRing
+                        used={subShelf.productQuantity}
+                        capacity={subShelf.capacity}
+                        size={36}
+                        thickness={4}
                       />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setProductModalFor(subShelf.id)}
-                        disabled={subFull}
-                        className="eyebrow border border-ink/20 px-2 py-1.5 text-[11px] text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
-                      >
-                        {subFull ? "Full" : "+ Add product"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCreatingBoxFor(subShelf.id)}
-                        className="eyebrow border border-ink/20 px-2 py-1.5 text-[11px] text-ink/70 hover:border-accent hover:text-accent transition-colors"
-                      >
-                        + Add box
-                      </button>
-                    </div>
-
-                    {creatingBoxFor === subShelf.id && (
-                      <div className="border border-line bg-paper/60 p-2 flex items-center gap-2 mt-1">
-                        <input
-                          type="text"
-                          value={newBoxName}
-                          onChange={(e) => setNewBoxName(e.target.value)}
-                          placeholder="Box name"
-                          className="flex-1 border-b border-line bg-transparent py-1 text-xs focus:outline-none focus:border-accent"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleCreateBox(subShelf.id)}
-                          disabled={savingBox}
-                          className="eyebrow bg-accent px-2 py-1 text-[11px] text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
-                        >
-                          {savingBox ? "Saving…" : "Create"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCreatingBoxFor(null)}
-                          className="eyebrow text-[11px] text-ink/50 hover:text-ink px-1"
-                        >
-                          Cancel
-                        </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-display italic text-sm text-ink truncate">
+                            {subShelf.name}
+                          </p>
+                          <StatusPill full={subFull} />
+                        </div>
+                        <p className="text-[11px] text-ink/45 font-mono">
+                          {subShelf.productQuantity} / {subShelf.capacity} · up to {subShelf.maxBoxes} boxes
+                        </p>
                       </div>
-                    )}
-
+                    </div>
                     <button
                       type="button"
-                      onClick={() => toggleBoxesExpanded(subShelf.id)}
-                      className="text-[11px] text-ink/50 hover:text-accent transition-colors text-left mt-1"
+                      onClick={() => handleDeleteSubShelf(subShelf.id)}
+                      className="eyebrow text-[10px] text-ink/40 hover:text-rust transition-colors shrink-0"
                     >
-                      {boxesExpanded ? "▾ Hide boxes" : "▸ View boxes"}
+                      Delete
                     </button>
-
-                    {boxesExpanded && (
-                      <div className="flex flex-col gap-2 pt-1 border-t border-line/50">
-                        {boxError && (
-                          <p className="text-[11px] text-red-700 mt-2">{boxError}</p>
-                        )}
-                        {loadingBoxes && boxes.length === 0 ? (
-                          <p className="text-[11px] text-ink/50 mt-2">Loading boxes…</p>
-                        ) : boxes.length === 0 ? (
-                          <p className="text-[11px] text-ink/50 mt-2">No boxes yet.</p>
-                        ) : (
-                          boxes.map((box) => {
-                            const boxPct =
-                              box.capacity > 0
-                                ? Math.min(
-                                    100,
-                                    Math.round(
-                                      (box.productQuantity / box.capacity) * 100
-                                    )
-                                  )
-                                : 0;
-                            const boxFull = box.availableCapacity <= 0;
-
-                            return (
-                              <div
-                                key={box.id}
-                                className="border border-line/50 bg-paper/60 p-2 flex flex-col gap-1.5 mt-2"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <p className="font-mono text-xs text-ink truncate">
-                                    {box.name}
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteBox(subShelf.id, box.id)}
-                                    className="eyebrow text-[10px] border border-ink/20 px-1.5 py-0.5 text-ink/60 hover:border-rust hover:text-rust transition-colors shrink-0"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                                <div className="flex items-baseline justify-between text-[10px] text-ink/60">
-                                  <span className="eyebrow">Products</span>
-                                  <span>
-                                    {box.productQuantity} / {box.capacity} ({boxPct}%)
-                                  </span>
-                                </div>
-                                <div className="h-1 w-full bg-ink/10 overflow-hidden">
-                                  <div
-                                    className={`h-full ${boxFull ? "bg-rust" : "bg-accent"}`}
-                                    style={{ width: `${boxPct}%` }}
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setBoxProductModalFor({
-                                      subShelfId: subShelf.id,
-                                      boxId: box.id,
-                                    })
-                                  }
-                                  disabled={boxFull}
-                                  className="eyebrow border border-ink/20 px-2 py-1 text-[10px] text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 mt-0.5"
-                                >
-                                  {boxFull ? "Box full" : "+ Add product"}
-                                </button>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProductModalFor(subShelf.id)}
+                      disabled={subFull}
+                      className="eyebrow rounded-md border border-ink/15 px-2 py-1.5 text-[11px] text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40"
+                    >
+                      {subFull ? "Full" : "+ Add product"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreatingBoxFor(subShelf.id)}
+                      className="eyebrow rounded-md border border-ink/15 px-2 py-1.5 text-[11px] text-ink/70 hover:border-accent hover:text-accent transition-colors"
+                    >
+                      + Add box
+                    </button>
+                  </div>
+
+                  {creatingBoxFor === subShelf.id && (
+                    <div className="rounded-md border border-line bg-paper/60 p-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newBoxName}
+                        onChange={(e) => setNewBoxName(e.target.value)}
+                        placeholder="Box name"
+                        className="flex-1 border-b border-line bg-transparent py-1 text-xs focus:outline-none focus:border-accent"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCreateBox(subShelf.id)}
+                        disabled={savingBox}
+                        className="eyebrow rounded-md bg-accent px-2 py-1 text-[11px] text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+                      >
+                        {savingBox ? "Saving…" : "Create"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCreatingBoxFor(null)}
+                        className="eyebrow text-[11px] text-ink/50 hover:text-ink px-1"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => toggleBoxesExpanded(subShelf.id)}
+                    className="text-[11px] text-ink/45 hover:text-accent transition-colors text-left flex items-center gap-1"
+                  >
+                    <span
+                      className="inline-block transition-transform"
+                      style={{ transform: boxesExpanded ? "rotate(90deg)" : "none" }}
+                    >
+                      ›
+                    </span>
+                    {boxesExpanded ? "Hide boxes" : `View boxes${boxes.length ? ` (${boxes.length})` : ""}`}
+                  </button>
+
+                  {boxesExpanded && (
+                    <div className="rounded-lg bg-ink/[0.03] p-2.5 flex flex-col gap-2">
+                      {boxError && <p className="text-[11px] text-rust">{boxError}</p>}
+                      {loadingBoxes && boxes.length === 0 ? (
+                        <p className="text-[11px] text-ink/50">Loading boxes…</p>
+                      ) : boxes.length === 0 ? (
+                        <p className="text-[11px] text-ink/50">No boxes yet.</p>
+                      ) : (
+                        boxes.map((box) => {
+                          const boxFull = box.availableCapacity <= 0;
+                          return (
+                            <div
+                              key={box.id}
+                              className="rounded-md border border-line/60 bg-paper p-2.5 flex items-center gap-2.5"
+                            >
+                              <CapacityRing
+                                used={box.productQuantity}
+                                capacity={box.capacity}
+                                size={30}
+                                thickness={4}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-mono text-xs text-ink truncate">{box.name}</p>
+                                  <StatusPill full={boxFull} />
+                                </div>
+                                <p className="text-[10px] text-ink/45 font-mono">
+                                  {box.productQuantity} / {box.capacity}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setBoxProductModalFor({ subShelfId: subShelf.id, boxId: box.id })
+                                }
+                                disabled={boxFull}
+                                className="eyebrow rounded-md border border-ink/15 px-2 py-1 text-[10px] text-ink/70 hover:border-accent hover:text-accent transition-colors disabled:opacity-40 shrink-0"
+                              >
+                                + Product
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBox(subShelf.id, box.id)}
+                                className="eyebrow text-[10px] text-ink/40 hover:text-rust transition-colors shrink-0"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}
 
       {productModalFor && (
         <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-20 px-4">
-          <div className="border border-line bg-paper p-6 w-full max-w-sm">
+          <div className="rounded-xl border border-line bg-paper p-6 w-full max-w-sm shadow-lg">
             <h3 className="font-display text-lg text-ink mb-4">Add product</h3>
             <div className="space-y-3">
               <input
@@ -612,18 +588,14 @@ export function ShelfCard({
               />
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button
-                type="button"
-                onClick={() => setProductModalFor(null)}
-                className="text-sm text-ink/50 hover:text-ink"
-              >
+              <button type="button" onClick={() => setProductModalFor(null)} className="text-sm text-ink/50 hover:text-ink">
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleAddProductToSubShelf}
                 disabled={savingProduct}
-                className="bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+                className="rounded-lg bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
               >
                 {savingProduct ? "Adding…" : "Add product"}
               </button>
@@ -634,7 +606,7 @@ export function ShelfCard({
 
       {boxProductModalFor && (
         <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-20 px-4">
-          <div className="border border-line bg-paper p-6 w-full max-w-sm">
+          <div className="rounded-xl border border-line bg-paper p-6 w-full max-w-sm shadow-lg">
             <h3 className="font-display text-lg text-ink mb-4">Add product to box</h3>
             <div className="space-y-3">
               <input
@@ -662,18 +634,14 @@ export function ShelfCard({
               />
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button
-                type="button"
-                onClick={() => setBoxProductModalFor(null)}
-                className="text-sm text-ink/50 hover:text-ink"
-              >
+              <button type="button" onClick={() => setBoxProductModalFor(null)} className="text-sm text-ink/50 hover:text-ink">
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleAddProductToBox}
                 disabled={savingBoxProduct}
-                className="bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
+                className="rounded-lg bg-accent px-4 py-2 text-sm text-paper hover:bg-accent-dim transition-colors disabled:opacity-50"
               >
                 {savingBoxProduct ? "Adding…" : "Add product"}
               </button>
