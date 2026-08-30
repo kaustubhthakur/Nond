@@ -1,137 +1,172 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useStore } from "@/context/StoreContext";
+import { warehouseApi } from "@/lib/warehouseApi";
+import { shelfApi } from "@/lib/shelfApi";
 import { ApiError } from "@/types/auth";
-import { CreateShelfPayload } from "@/types/shelf";
+import { Warehouse } from "@/types/warehouse";
+import { CreateShelfPayload, Shelf } from "@/types/shelf";
+import { ShelfCard } from "@/components/warehouses/ShelfCard";
+import { CreateShelfModal } from "@/components/warehouses/CreateShelfModal";
 
-interface CreateShelfModalProps {
-  maxSubShelves: number;
-  maxProducts: number;
-  onClose: () => void;
-  onCreate: (payload: CreateShelfPayload) => Promise<void>;
-}
+export default function WarehouseShelvesPage() {
+  const { store, isLoading: storeLoading } = useStore();
+  const params = useParams<{ warehouseId: string }>();
+  const warehouseId = params.warehouseId;
 
-export function CreateShelfModal({
-  maxSubShelves,
-  maxProducts,
-  onClose,
-  onCreate,
-}: CreateShelfModalProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
+  const [shelves, setShelves] = useState<Shelf[]>([]);
+  const [shelfCapacity, setShelfCapacity] = useState(0);
+  const [availableShelves, setAvailableShelves] = useState(0);
+  const [maxSubShelves, setMaxSubShelves] = useState(0);
+  const [maxProducts, setMaxProducts] = useState(0);
+
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  const loadData = useCallback(async () => {
+    if (!store) return;
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+    setLoading(true);
     setError(null);
 
-    if (!name.trim()) {
-      setError("Shelf name is required");
-      return;
-    }
-
-    setSubmitting(true);
     try {
-      await onCreate({
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
+      const [warehouseRes, shelvesRes, optionsRes] = await Promise.all([
+        warehouseApi.get(store.id, warehouseId),
+        shelfApi.list(store.id, warehouseId),
+        shelfApi.getOptions(),
+      ]);
+
+      setWarehouse(warehouseRes.warehouse);
+      setShelves(shelvesRes.shelves);
+      setShelfCapacity(shelvesRes.shelfCapacity);
+      setAvailableShelves(shelvesRes.availableShelves);
+      setMaxSubShelves(optionsRes.maxSubShelves);
+      setMaxProducts(optionsRes.maxProducts);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Failed to create shelf"
+        err instanceof ApiError ? err.message : "Failed to load shelves"
       );
-      setSubmitting(false);
-      return;
+    } finally {
+      setLoading(false);
     }
-    setSubmitting(false);
+  }, [store, warehouseId]);
+
+  useEffect(() => {
+    if (store) {
+      loadData();
+    }
+  }, [store, loadData]);
+
+  const handleCreate = async (payload: CreateShelfPayload) => {
+    if (!store) return;
+    const res = await shelfApi.create(store.id, warehouseId, payload);
+    setShelves((prev) => [res.shelf, ...prev]);
+    setAvailableShelves((prev) => Math.max(0, prev - 1));
+    setShowCreateModal(false);
   };
 
+  const handleDelete = async (shelf: Shelf) => {
+    if (!store) return;
+    try {
+      await shelfApi.remove(store.id, warehouseId, shelf.id);
+      setShelves((prev) => prev.filter((s) => s.id !== shelf.id));
+      setAvailableShelves((prev) => prev + 1);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to delete shelf");
+    }
+  };
+
+  if (storeLoading || (loading && !warehouse)) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center text-sm text-ink/50">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!store) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center text-sm text-ink/50">
+        You need a store before you can view warehouses.
+      </div>
+    );
+  }
+
+  const atShelfCapacity = shelfCapacity > 0 && availableShelves <= 0;
+
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-ink/40 px-4">
-      <div className="w-full max-w-md bg-paper border border-line p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display italic text-xl text-ink">New shelf</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-ink/40 hover:text-ink text-lg leading-none"
-            aria-label="Close"
-          >
-            ×
-          </button>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <Link
+        href="/warehouses"
+        className="text-xs text-ink/50 hover:text-accent transition-colors"
+      >
+        ← All warehouses
+      </Link>
+
+      <div className="flex items-center justify-between mt-3 mb-8">
+        <div>
+          <h1 className="font-display italic text-2xl text-ink tracking-wide">
+            {warehouse?.name ?? "Warehouse"}
+          </h1>
+          <p className="text-sm text-ink/50 mt-1">
+            {shelves.length} / {shelfCapacity} shelves used
+            {atShelfCapacity ? " — at capacity" : ""}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="shelf-name">
-              Name
-            </label>
-            <input
-              id="shelf-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-              className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              placeholder="Shelf A"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="eyebrow text-ink/60"
-              htmlFor="shelf-description"
-            >
-              Description{" "}
-              <span className="normal-case text-ink/40">(optional)</span>
-            </label>
-            <textarea
-              id="shelf-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-              rows={3}
-              className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent resize-none"
-              placeholder="What goes on this shelf"
-            />
-          </div>
-
-          <p className="text-xs text-ink/40">
-            Each shelf supports up to {maxSubShelves} sub-shelves and{" "}
-            {maxProducts.toLocaleString()} products total.
-          </p>
-
-          {error ? <p className="text-xs text-rust">{error}</p> : null}
-
-          <div className="flex justify-end gap-2 mt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="eyebrow border border-ink/20 px-3 py-1.5 text-ink/60 hover:text-ink transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="eyebrow border border-accent bg-accent text-paper px-3 py-1.5 hover:bg-transparent hover:text-accent transition-colors disabled:opacity-50"
-            >
-              {submitting ? "Creating…" : "Create shelf"}
-            </button>
-          </div>
-        </form>
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          disabled={atShelfCapacity}
+          title={
+            atShelfCapacity
+              ? "This warehouse has reached its shelf capacity"
+              : undefined
+          }
+          className="eyebrow border border-accent bg-accent text-paper px-4 py-2 hover:bg-transparent hover:text-accent transition-colors disabled:opacity-50"
+        >
+          + New shelf
+        </button>
       </div>
+
+      {error ? (
+        <div className="border border-rust/40 bg-rust/5 text-rust text-sm px-4 py-3 mb-6">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="text-center text-sm text-ink/50 py-16">
+          Loading shelves…
+        </div>
+      ) : shelves.length === 0 ? (
+        <div className="border border-dashed border-line text-center py-16 px-6">
+          <p className="text-sm text-ink/60">
+            No shelves yet. Create one to start organizing sub-shelves and
+            boxes.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {shelves.map((shelf) => (
+            <ShelfCard key={shelf.id} shelf={shelf} onDelete={handleDelete} />
+          ))}
+        </div>
+      )}
+
+      {showCreateModal ? (
+        <CreateShelfModal
+          maxSubShelves={maxSubShelves}
+          maxProducts={maxProducts}
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
+        />
+      ) : null}
     </div>
   );
 }
