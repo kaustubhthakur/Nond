@@ -1,7 +1,3 @@
-// Example: how to wire ShelfCard + ShelfDrilldown into your warehouse page.
-// Replace the old inline-expanding grid with this — one drilldown panel
-// mounted once, controlled by which shelf is currently "open".
-
 "use client";
 
 import { useState } from "react";

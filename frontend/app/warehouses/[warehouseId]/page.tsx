@@ -1,22 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { warehouseApi } from "@/lib/warehouseApi";
 import { shelfApi } from "@/lib/shelfApi";
 import { ApiError } from "@/types/auth";
 import { Warehouse } from "@/types/warehouse";
-import { CreateShelfPayload, Shelf, AddProductToShelfPayload } from "@/types/shelf";
-import { ShelfCard } from "@/components/warehouses/ShelfCard";
+import { CreateShelfPayload, Shelf } from "@/types/shelf";
+import { ShelfGrid } from "@/components/warehouses/ShelfGrid";
 import { CreateShelfModal } from "@/components/warehouses/CreateShelfModal";
-import { AddProductModal } from "@/components/warehouses/AddProductModal";
 
 export default function WarehouseShelvesPage() {
   const { store, isLoading: storeLoading } = useStore();
   const params = useParams<{ warehouseId: string }>();
-  const router = useRouter();
   const warehouseId = params.warehouseId;
 
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
@@ -29,9 +27,6 @@ export default function WarehouseShelvesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [productModalShelf, setProductModalShelf] = useState<Shelf | null>(
-    null
-  );
 
   const loadData = useCallback(async () => {
     if (!store) return;
@@ -75,43 +70,10 @@ export default function WarehouseShelvesPage() {
     setShowCreateModal(false);
   };
 
-  const handleAddProduct = async (payload: AddProductToShelfPayload) => {
-    if (!store || !productModalShelf) return;
-
-    await shelfApi.addProduct(
-      store.id,
-      warehouseId,
-      productModalShelf.id,
-      payload
-    );
-
-    // Mirror the backend's own math (productQuantity += qty,
-    // availableCapacity = capacity - productQuantity) so the card updates
-    // instantly without a second round trip.
-    setShelves((prev) =>
-      prev.map((s) =>
-        s.id === productModalShelf.id
-          ? {
-              ...s,
-              productQuantity: s.productQuantity + payload.quantity,
-              availableCapacity: s.availableCapacity - payload.quantity,
-            }
-          : s
-      )
-    );
-
-    setProductModalShelf(null);
-  };
-
-  const handleAddSubShelf = (shelf: Shelf) => {
-    router.push(`/warehouses/${warehouseId}/shelves/${shelf.id}`);
-  };
-
-  // Fired by ShelfCard after a sub-shelf action changes this shelf's own
-  // productQuantity/availableCapacity (e.g. adding a product inside a
-  // sub-shelf, or deleting a sub-shelf that reclaims space). Refetches
-  // just this one shelf so its card reflects the real backend numbers
-  // without a full page reload.
+  // Fired by ShelfDrilldown after a sub-shelf/box/product action changes
+  // this shelf's own productQuantity/availableCapacity. Refetches just
+  // this one shelf so its card reflects the real backend numbers without
+  // a full page reload.
   const handleShelfChanged = useCallback(
     async (shelf: Shelf) => {
       if (!store) return;
@@ -208,18 +170,11 @@ export default function WarehouseShelvesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {shelves.map((shelf) => (
-            <ShelfCard
-              key={shelf.id}
-              shelf={shelf}
-              onDelete={handleDelete}
-              onAddProduct={setProductModalShelf}
-              onAddSubShelf={handleAddSubShelf}
-              onShelfChanged={handleShelfChanged}
-            />
-          ))}
-        </div>
+        <ShelfGrid
+          shelves={shelves}
+          onDeleteShelf={handleDelete}
+          onShelfChanged={handleShelfChanged}
+        />
       )}
 
       {showCreateModal ? (
@@ -228,15 +183,6 @@ export default function WarehouseShelvesPage() {
           maxProducts={maxProducts}
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreate}
-        />
-      ) : null}
-
-      {productModalShelf ? (
-        <AddProductModal
-          shelfName={productModalShelf.name}
-          availableCapacity={productModalShelf.availableCapacity}
-          onClose={() => setProductModalShelf(null)}
-          onAdd={handleAddProduct}
         />
       ) : null}
     </div>
