@@ -5,7 +5,7 @@ import type {
   SubShelfProduct,
 } from "@/types/subshelf";
 
-// Mirrors backend/routes/subshelf.js, mounted as app.use("/subshelf", subShelfRouter).
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {

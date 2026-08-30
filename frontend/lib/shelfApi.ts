@@ -38,7 +38,7 @@ async function request<T>(
   try {
     data = await res.json();
   } catch {
-    // no body / non-json response
+    
   }
 
   if (!res.ok) {
@@ -66,8 +66,7 @@ export const shelfApi = {
       { method: "POST", body: payload }
     ),
 
-  // Also the source of real "shelves filled" usage for a warehouse:
-  // count / shelfCapacity / availableShelves come straight from Firestore.
+
   list: (storeId: string, warehouseId: string) =>
     request<{
       success: true;

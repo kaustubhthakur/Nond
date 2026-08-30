@@ -36,7 +36,7 @@ async function request<T>(
   try {
     data = await res.json();
   } catch {
-    // no body / non-json response
+
   }
 
   if (!res.ok) {
