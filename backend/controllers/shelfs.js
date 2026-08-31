@@ -706,3 +706,118 @@ exports.addProductToShelf = async (
     });
   }
 };
+
+// Subtract stock from a product on this shelf — e.g. when it's sold.
+exports.sellProductFromShelf = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      productId,
+    } = req.params;
+
+    const { quantity } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !productId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and product ID are required",
+      });
+    }
+
+    if (
+      !Number.isInteger(Number(quantity)) ||
+      Number(quantity) <= 0
+    ) {
+      return res.status(400).json({
+        error:
+          "Quantity must be a positive integer",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const warehouse =
+      await getWarehouse(
+        storeId,
+        warehouseId
+      );
+
+    if (!warehouse) {
+      return res.status(404).json({
+        error: "Warehouse not found",
+      });
+    }
+
+    const shelf =
+      await Shelf.getShelf(
+        storeId,
+        warehouseId,
+        shelfId
+      );
+
+    if (!shelf) {
+      return res.status(404).json({
+        error: "Shelf not found",
+      });
+    }
+
+    let result;
+
+    try {
+      result =
+        await Shelf.sellProductFromShelf({
+          storeId,
+          warehouseId,
+          shelfId,
+          productId,
+          quantity: Number(quantity),
+        });
+    } catch (err) {
+      return res.status(409).json({
+        error: err.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.deleted
+        ? "Product sold out and removed from shelf"
+        : "Product quantity updated",
+      ...result,
+    });
+  } catch (err) {
+    console.error(
+      "Sell product from shelf error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to sell product from shelf",
+    });
+  }
+};

@@ -880,6 +880,134 @@ exports.addProduct = async (
   }
 };
 
+// Subtract stock from a product in this box — e.g. when it's sold.
+exports.sellProduct = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+      productId,
+    } = req.params;
+
+    const { quantity } = req.body;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !subShelfId ||
+      !boxId ||
+      !productId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID, sub-shelf ID, box ID and product ID are required",
+      });
+    }
+
+    const store =
+      await getStoreForUser(
+        userId,
+        storeId
+      );
+
+    if (!store) {
+      return res.status(403).json({
+        error:
+          "You do not have access to this store",
+      });
+    }
+
+    const hierarchy =
+      await validateHierarchy(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId
+      );
+
+    if (hierarchy.error) {
+      return res.status(
+        hierarchy.status
+      ).json({
+        error: hierarchy.error,
+      });
+    }
+
+    const box =
+      await Box.getBox(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId
+      );
+
+    if (!box) {
+      return res.status(404).json({
+        error: "Box not found",
+      });
+    }
+
+    const qty = Number(quantity);
+
+    if (
+      !Number.isInteger(qty) ||
+      qty <= 0
+    ) {
+      return res.status(400).json({
+        error:
+          "Quantity must be a positive integer",
+      });
+    }
+
+    let result;
+
+    try {
+      result = await Box.sellProduct(
+        storeId,
+        warehouseId,
+        shelfId,
+        subShelfId,
+        boxId,
+        productId,
+        qty
+      );
+    } catch (err) {
+      return res.status(409).json({
+        error: err.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.deleted
+        ? "Product sold out and removed from box"
+        : "Product quantity updated",
+      ...result,
+    });
+  } catch (err) {
+    console.error(
+      "Sell product from box error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to sell product from box",
+    });
+  }
+};
+
 exports.getBoxProducts = async (
   req,
   res
