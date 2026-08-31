@@ -10,6 +10,7 @@ import {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
+
 const SHELF_URL = `${API_BASE_URL}/shelf`;
 
 async function request<T>(
@@ -23,7 +24,9 @@ async function request<T>(
   try {
     res = await fetch(`${SHELF_URL}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: body
+        ? { "Content-Type": "application/json" }
+        : undefined,
       credentials: "include",
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -35,14 +38,14 @@ async function request<T>(
   }
 
   let data: unknown = null;
+
   try {
     data = await res.json();
-  } catch {
-    
-  }
+  } catch {}
 
   if (!res.ok) {
     const errBody = (data ?? {}) as Partial<ApiErrorBody>;
+
     throw new ApiError(
       errBody.error ?? `Request failed (${res.status})`,
       res.status,
@@ -54,30 +57,51 @@ async function request<T>(
 }
 
 export const shelfApi = {
-  getOptions: () => request<{ success: true } & ShelfOptions>("/options"),
+  getOptions: () =>
+    request<{ success: true } & ShelfOptions>(
+      "/options"
+    ),
 
   create: (
     storeId: string,
     warehouseId: string,
     payload: CreateShelfPayload
   ) =>
-    request<{ success: true; message: string; shelf: Shelf }>(
+    request<{
+      success: true;
+      message: string;
+      shelf: Shelf;
+    }>(
       `/store/${storeId}/warehouse/${warehouseId}`,
-      { method: "POST", body: payload }
+      {
+        method: "POST",
+        body: payload,
+      }
     ),
 
-
-  list: (storeId: string, warehouseId: string) =>
+  list: (
+    storeId: string,
+    warehouseId: string
+  ) =>
     request<{
       success: true;
       count: number;
       shelfCapacity: number;
       availableShelves: number;
       shelves: Shelf[];
-    }>(`/store/${storeId}/warehouse/${warehouseId}`),
+    }>(
+      `/store/${storeId}/warehouse/${warehouseId}`
+    ),
 
-  get: (storeId: string, warehouseId: string, shelfId: string) =>
-    request<{ success: true; shelf: Shelf }>(
+  get: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string
+  ) =>
+    request<{
+      success: true;
+      shelf: Shelf;
+    }>(
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}`
     ),
 
@@ -87,15 +111,31 @@ export const shelfApi = {
     shelfId: string,
     payload: UpdateShelfPayload
   ) =>
-    request<{ success: true; message: string; shelf: Shelf }>(
+    request<{
+      success: true;
+      message: string;
+      shelf: Shelf;
+    }>(
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}`,
-      { method: "PUT", body: payload }
+      {
+        method: "PUT",
+        body: payload,
+      }
     ),
 
-  remove: (storeId: string, warehouseId: string, shelfId: string) =>
-    request<{ success: true; message: string }>(
+  remove: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string
+  ) =>
+    request<{
+      success: true;
+      message: string;
+    }>(
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}`,
-      { method: "DELETE" }
+      {
+        method: "DELETE",
+      }
     ),
 
   addProduct: (
@@ -104,8 +144,62 @@ export const shelfApi = {
     shelfId: string,
     payload: AddProductToShelfPayload
   ) =>
-    request<{ success: true; message: string; product: ShelfProduct }>(
+    request<{
+      success: true;
+      message: string;
+      product: ShelfProduct;
+    }>(
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product`,
-      { method: "POST", body: payload }
+      {
+        method: "POST",
+        body: {
+          name: payload.name.trim(),
+          sku:
+            payload.sku !== undefined &&
+            payload.sku !== null &&
+            String(payload.sku).trim()
+              ? String(payload.sku).trim()
+              : null,
+          quantity: Number(payload.quantity),
+        },
+      }
+    ),
+
+  getProducts: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string
+  ) =>
+    request<{
+      success: true;
+      count: number;
+      capacity: number;
+      productQuantity: number;
+      products: ShelfProduct[];
+    }>(
+      `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/products`
+    ),
+
+  sellProduct: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string,
+    productId: string,
+    quantity: number
+  ) =>
+    request<{
+      success: true;
+      message: string;
+      product?: ShelfProduct;
+      deleted?: boolean;
+      quantity?: number;
+    }>(
+      `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product/${productId}`,
+      {
+        method: "POST",
+        body: {
+          quantity: Number(quantity),
+        },
+      }
     ),
 };

@@ -609,7 +609,8 @@ exports.addProductToShelf = async (
     } = req.params;
 
     const {
-      productId,
+      name,
+      sku,
       quantity,
     } = req.body;
 
@@ -624,15 +625,39 @@ exports.addProductToShelf = async (
       });
     }
 
-    if (!productId) {
+    if (
+      typeof name !== "string" ||
+      !name.trim()
+    ) {
       return res.status(400).json({
-        error: "Product ID is required",
+        error: "Product name is required",
+      });
+    }
+
+    if (name.trim().length > 100) {
+      return res.status(400).json({
+        error:
+          "Product name cannot exceed 100 characters",
       });
     }
 
     if (
-      !Number.isInteger(Number(quantity)) ||
-      Number(quantity) <= 0
+      sku !== undefined &&
+      sku !== null &&
+      typeof sku !== "string" &&
+      typeof sku !== "number"
+    ) {
+      return res.status(400).json({
+        error:
+          "SKU must be a string or number",
+      });
+    }
+
+    const qty = Number(quantity);
+
+    if (
+      !Number.isInteger(qty) ||
+      qty <= 0
     ) {
       return res.status(400).json({
         error:
@@ -678,14 +703,49 @@ exports.addProductToShelf = async (
       });
     }
 
-    const product =
-      await Shelf.addProductToShelf({
-        storeId,
-        warehouseId,
-        shelfId,
-        productId,
-        quantity: Number(quantity),
+    const availableSpace =
+      shelf.capacity -
+      shelf.productQuantity;
+
+    if (qty > availableSpace) {
+      return res.status(409).json({
+        error: `Shelf only has ${availableSpace} unit(s) of space left`,
+        capacity: shelf.capacity,
+        currentQuantity:
+          shelf.productQuantity,
+        availableSpace,
       });
+    }
+
+    let product;
+
+    try {
+      product =
+        await Shelf.addProductToShelf({
+          storeId,
+          warehouseId,
+          shelfId,
+          name: name.trim(),
+          sku:
+            sku !== undefined &&
+            sku !== null &&
+            String(sku).trim()
+              ? String(sku).trim()
+              : null,
+          quantity: qty,
+        });
+    } catch (err) {
+      return res.status(409).json({
+        error: err.message,
+      });
+    }
+
+    if (!product) {
+      return res.status(404).json({
+        error:
+          "Failed to add product to shelf",
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -699,7 +759,7 @@ exports.addProductToShelf = async (
       err
     );
 
-    return res.status(400).json({
+    return res.status(500).json({
       error:
         err.message ||
         "Failed to add product to shelf",
