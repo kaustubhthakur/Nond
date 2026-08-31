@@ -1,73 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PackagePlus, Search, ShoppingCart } from "lucide-react";
 
 import { getMyStores } from "@/lib/store";
 import { getWarehouses } from "@/lib/warehouseApi";
 
 import {
+  addProductToShelf,
+  getShelfProducts,
   getShelves,
   sellProductFromShelf,
 } from "@/lib/shelfApi";
 
 import {
   addSubShelfProduct,
-  getSubShelves,
   getSubShelfProducts,
+  getSubShelves,
   sellSubShelfProduct,
 } from "@/lib/subshelf";
 
 import {
   addBoxProduct,
-  getBoxes,
   getBoxProducts,
+  getBoxes,
   sellBoxProduct,
 } from "@/lib/box";
 
-import type { SearchResult } from "@/types/search";
-
 import { useStore } from "@/context/StoreContext";
-
-import { GlobalSearch } from "@/components/inventory/GlobalSearch";
 import { StockExitModal } from "@/components/inventory/StockExitModal";
-import { StockEntryModal } from "@/components/inventory/StockEntryModal";
 
-type ExitTarget = {
-  productId: string;
-  name: string;
-  quantity: number;
-  sell: (quantity: number) => Promise<void>;
-};
-
-type EntryTarget = {
-  level: "subShelf" | "box";
-
-  productName: string;
-
-  warehouseId: string;
-  shelfId: string;
-
-  subShelfId: string;
-  boxId?: string;
-
-  label: string;
-};
+type ProductLevel = "shelf" | "subshelf" | "box";
 
 type DashboardProduct = {
   rowId: string;
-
   productId: string;
   productName: string;
-  sku?: string;
-
+  sku?: string | null;
   quantity: number;
+
+  level: ProductLevel;
 
   warehouseId: string;
   warehouseName: string;
 
   shelfId: string;
-  shelfName: string;
+  shelfName?: string;
 
   subShelfId?: string;
   subShelfName?: string;
@@ -80,33 +58,41 @@ type DashboardProduct = {
   sell: (quantity: number) => Promise<void>;
 };
 
+type ExitTarget = {
+  productId: string;
+  name: string;
+  quantity: number;
+  sell: (quantity: number) => Promise<void>;
+};
+
+type AddTarget = {
+  product: DashboardProduct;
+};
+
 export default function DashboardPage() {
   const { store } = useStore();
 
   const [storeId, setStoreId] = useState<string | null>(null);
-
-  const [products, setProducts] =
-    useState<DashboardProduct[]>([]);
-
+  const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [banner, setBanner] = useState<string | null>(null);
 
-  const [banner, setBanner] =
-    useState<string | null>(null);
-
-  const [refreshKey, setRefreshKey] =
-    useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [exitTarget, setExitTarget] =
     useState<ExitTarget | null>(null);
 
-  const [entryTarget, setEntryTarget] =
-    useState<EntryTarget | null>(null);
+  const [addTarget, setAddTarget] =
+    useState<AddTarget | null>(null);
+
+  const [addQuantity, setAddQuantity] = useState("");
+  const [adding, setAdding] = useState(false);
 
   /*
-   * Get current store ID
+   * GET STORE
    */
   useEffect(() => {
     getMyStores()
@@ -119,10 +105,23 @@ export default function DashboardPage() {
   }, []);
 
   /*
-   * Load every product from every warehouse
+   * LOAD PRODUCTS FROM ALL STORAGE LEVELS
+   *
+   * ALL WAREHOUSES
+   * └── ALL SHELVES
+   *     ├── SHELF PRODUCTS
+   *     │
+   *     └── ALL SUB-SHELVES
+   *         ├── SUB-SHELF PRODUCTS
+   *         │
+   *         └── ALL BOXES
+   *             └── BOX PRODUCTS
    */
   useEffect(() => {
-    if (!storeId) return;
+    if (!storeId) {
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
@@ -134,62 +133,64 @@ export default function DashboardPage() {
         const allProducts: DashboardProduct[] = [];
 
         /*
-         * Get all warehouses
+         * ==========================================
+         * GET ALL WAREHOUSES
+         * ==========================================
          */
-        const { warehouses } =
-          await getWarehouses(storeId);
+        const warehouseResponse = await getWarehouses(storeId);
 
-        /*
-         * Loop warehouses
-         */
-        for (const warehouse of warehouses) {
-          const { shelves } =
-            await getShelves(
+        for (const warehouse of warehouseResponse.warehouses) {
+          /*
+           * ==========================================
+           * GET ALL SHELVES IN THIS WAREHOUSE
+           * ==========================================
+           */
+          let shelvesResponse;
+
+          try {
+            shelvesResponse = await getShelves(
               storeId,
               warehouse.id
             );
+          } catch (err) {
+            console.error(
+              `Could not load shelves for ${warehouse.name}`,
+              err
+            );
+            continue;
+          }
 
-          /*
-           * Loop shelves
-           */
-          for (const shelf of shelves) {
-            const { subShelves } =
-              await getSubShelves(
-                storeId,
-                warehouse.id,
-                shelf.id
-              );
-
+          for (const shelf of shelvesResponse.shelves) {
             /*
-             * Loop sub-shelves
+             * ==========================================
+             * 1. LOAD PRODUCTS DIRECTLY ON SHELF
+             * ==========================================
              */
-            for (const subShelf of subShelves) {
-              /*
-               * Products directly in sub-shelf
-               */
-              const {
-                products: subShelfProducts,
-              } = await getSubShelfProducts(
-                storeId,
-                warehouse.id,
-                shelf.id,
-                subShelf.id
-              );
+            try {
+              const shelfProductsResponse =
+                await getShelfProducts(
+                  storeId,
+                  warehouse.id,
+                  shelf.id
+                );
 
-              subShelfProducts.forEach(
+              shelfProductsResponse.products.forEach(
                 (product) => {
                   allProducts.push({
-                    rowId: `${warehouse.id}-${shelf.id}-${subShelf.id}-${product.id}`,
+                    rowId: `shelf-${warehouse.id}-${shelf.id}-${product.id}`,
 
                     productId: product.id,
 
                     productName:
                       product.name ?? "Product",
 
-                    sku: product.sku,
+                    sku:
+                      product.sku ?? null,
 
                     quantity:
-                      product.quantity,
+                      Number(product.quantity ?? 0),
+
+                    level: "shelf",
 
                     warehouseId:
                       warehouse.id,
@@ -203,58 +204,72 @@ export default function DashboardPage() {
                     shelfName:
                       shelf.name,
 
-                    subShelfId:
-                      subShelf.id,
-
-                    subShelfName:
-                      subShelf.name,
-
                     location:
-                      `${warehouse.name} / ${shelf.name} / ${subShelf.name}`,
+                      `${warehouse.name} / ${shelf.name}`,
 
-                    sell: async (qty) => {
-                      await sellSubShelfProduct(
+                    sell: async (quantity) => {
+                      await sellProductFromShelf(
                         storeId,
                         warehouse.id,
                         shelf.id,
-                        subShelf.id,
                         product.id,
-                        qty
+                        quantity
                       );
                     },
                   });
                 }
               );
+            } catch (err) {
+              console.error(
+                `Could not load products from shelf ${shelf.name}`,
+                err
+              );
+            }
 
-              /*
-               * Get boxes
-               */
-              const { boxes } =
-                await getBoxes(
+            /*
+             * ==========================================
+             * GET ALL SUB-SHELVES
+             * ==========================================
+             */
+            let subShelvesResponse;
+
+            try {
+              subShelvesResponse =
+                await getSubShelves(
                   storeId,
                   warehouse.id,
-                  shelf.id,
-                  subShelf.id
+                  shelf.id
                 );
+            } catch (err) {
+              console.error(
+                `Could not load sub-shelves for ${shelf.name}`,
+                err
+              );
+              continue;
+            }
 
+            for (
+              const subShelf of subShelvesResponse.subShelves
+            ) {
               /*
-               * Loop boxes
+               * ==========================================
+               * 2. LOAD PRODUCTS DIRECTLY IN SUB-SHELF
+               * ==========================================
                */
-              for (const box of boxes) {
-                const {
-                  products: boxProducts,
-                } = await getBoxProducts(
-                  storeId,
-                  warehouse.id,
-                  shelf.id,
-                  subShelf.id,
-                  box.id
-                );
+              try {
+                const subShelfProductsResponse =
+                  await getSubShelfProducts(
+                    storeId,
+                    warehouse.id,
+                    shelf.id,
+                    subShelf.id
+                  );
 
-                boxProducts.forEach(
+                subShelfProductsResponse.products.forEach(
                   (product) => {
                     allProducts.push({
-                      rowId: `${warehouse.id}-${shelf.id}-${subShelf.id}-${box.id}-${product.id}`,
+                      rowId:
+                        `subshelf-${warehouse.id}-${shelf.id}-${subShelf.id}-${product.id}`,
 
                       productId:
                         product.id,
@@ -263,10 +278,13 @@ export default function DashboardPage() {
                         product.name ?? "Product",
 
                       sku:
-                        product.sku,
+                        product.sku ?? null,
 
                       quantity:
-                        product.quantity,
+                        Number(product.quantity ?? 0),
+
+                      level:
+                        "subshelf",
 
                       warehouseId:
                         warehouse.id,
@@ -286,29 +304,140 @@ export default function DashboardPage() {
                       subShelfName:
                         subShelf.name,
 
-                      boxId:
-                        box.id,
-
-                      boxName:
-                        box.name,
-
                       location:
-                        `${warehouse.name} / ${shelf.name} / ${subShelf.name} / ${box.name}`,
+                        `${warehouse.name} / ${shelf.name} / ${subShelf.name}`,
 
-                      sell: async (qty) => {
-                        await sellBoxProduct(
+                      sell: async (
+                        quantity
+                      ) => {
+                        await sellSubShelfProduct(
                           storeId,
                           warehouse.id,
                           shelf.id,
                           subShelf.id,
-                          box.id,
                           product.id,
-                          qty
+                          quantity
                         );
                       },
                     });
                   }
                 );
+              } catch (err) {
+                console.error(
+                  `Could not load products from sub-shelf ${subShelf.name}`,
+                  err
+                );
+              }
+
+              /*
+               * ==========================================
+               * GET ALL BOXES
+               * ==========================================
+               */
+              let boxesResponse;
+
+              try {
+                boxesResponse =
+                  await getBoxes(
+                    storeId,
+                    warehouse.id,
+                    shelf.id,
+                    subShelf.id
+                  );
+              } catch (err) {
+                console.error(
+                  `Could not load boxes from ${subShelf.name}`,
+                  err
+                );
+                continue;
+              }
+
+              for (const box of boxesResponse.boxes) {
+                /*
+                 * ==========================================
+                 * 3. LOAD PRODUCTS INSIDE BOX
+                 * ==========================================
+                 */
+                try {
+                  const boxProductsResponse =
+                    await getBoxProducts(
+                      storeId,
+                      warehouse.id,
+                      shelf.id,
+                      subShelf.id,
+                      box.id
+                    );
+
+                  boxProductsResponse.products.forEach(
+                    (product) => {
+                      allProducts.push({
+                        rowId:
+                          `box-${warehouse.id}-${shelf.id}-${subShelf.id}-${box.id}-${product.id}`,
+
+                        productId:
+                          product.id,
+
+                        productName:
+                          product.name ?? "Product",
+
+                        sku:
+                          product.sku ?? null,
+
+                        quantity:
+                          Number(product.quantity ?? 0),
+
+                        level:
+                          "box",
+
+                        warehouseId:
+                          warehouse.id,
+
+                        warehouseName:
+                          warehouse.name,
+
+                        shelfId:
+                          shelf.id,
+
+                        shelfName:
+                          shelf.name,
+
+                        subShelfId:
+                          subShelf.id,
+
+                        subShelfName:
+                          subShelf.name,
+
+                        boxId:
+                          box.id,
+
+                        boxName:
+                          box.name,
+
+                        location:
+                          `${warehouse.name} / ${shelf.name} / ${subShelf.name} / ${box.name}`,
+
+                        sell: async (
+                          quantity
+                        ) => {
+                          await sellBoxProduct(
+                            storeId,
+                            warehouse.id,
+                            shelf.id,
+                            subShelf.id,
+                            box.id,
+                            product.id,
+                            quantity
+                          );
+                        },
+                      });
+                    }
+                  );
+                } catch (err) {
+                  console.error(
+                    `Could not load products from box ${box.name}`,
+                    err
+                  );
+                }
               }
             }
           }
@@ -318,6 +447,8 @@ export default function DashboardPage() {
           setProducts(allProducts);
         }
       } catch (err) {
+        console.error(err);
+
         if (!cancelled) {
           setError(
             err instanceof Error
@@ -339,82 +470,47 @@ export default function DashboardPage() {
     };
   }, [storeId, refreshKey]);
 
+  /*
+   * FILTER PRODUCTS
+   */
+  const filteredProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return products;
+    }
+
+    return products.filter((product) => {
+      return (
+        product.productName
+          .toLowerCase()
+          .includes(query) ||
+        product.warehouseName
+          .toLowerCase()
+          .includes(query) ||
+        product.location
+          .toLowerCase()
+          .includes(query) ||
+        product.sku
+          ?.toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [products, search]);
+
+  /*
+   * FLASH MESSAGE
+   */
   const flash = (message: string) => {
     setBanner(message);
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       setBanner(null);
     }, 3500);
   };
 
   /*
-   * Sell from search
-   */
-  const openExitForSearchResult = (
-    result: SearchResult
-  ) => {
-    if (!storeId) return;
-
-    const { location } = result;
-
-    let sell:
-      | ((quantity: number) => Promise<void>)
-      | undefined;
-
-    if (
-      location.boxId &&
-      location.subShelfId &&
-      location.shelfId
-    ) {
-      sell = async (qty) => {
-        await sellBoxProduct(
-          storeId,
-          location.warehouseId,
-          location.shelfId,
-          location.subShelfId,
-          location.boxId,
-          result.product.id,
-          qty
-        );
-      };
-    } else if (
-      location.subShelfId &&
-      location.shelfId
-    ) {
-      sell = async (qty) => {
-        await sellSubShelfProduct(
-          storeId,
-          location.warehouseId,
-          location.shelfId,
-          location.subShelfId,
-          result.product.id,
-          qty
-        );
-      };
-    } else if (location.shelfId) {
-      sell = async (qty) => {
-        await sellProductFromShelf(
-          storeId,
-          location.warehouseId,
-          location.shelfId,
-          result.product.id,
-          qty
-        );
-      };
-    }
-
-    if (!sell) return;
-
-    setExitTarget({
-      productId: result.product.id,
-      name: result.product.name ?? "Product",
-      quantity: result.product.quantity,
-      sell,
-    });
-  };
-
-  /*
-   * Submit Sell
+   * SELL PRODUCT
    */
   const submitExit = async (
     quantity: number
@@ -433,142 +529,182 @@ export default function DashboardPage() {
   };
 
   /*
-   * Submit Add Quantity
+   * ADD QUANTITY
    */
-  const submitEntry = async (
-    payload: {
-      name: string;
-      sku?: string;
-      quantity: number;
-    }
-  ) => {
-    if (!entryTarget || !storeId) return;
+  const submitAddQuantity = async () => {
+    if (!addTarget || !storeId) return;
 
-    /*
-     * Add to Box
-     */
+    const quantity = Number(addQuantity);
+
     if (
-      entryTarget.level === "box" &&
-      entryTarget.boxId
+      !Number.isFinite(quantity) ||
+      quantity <= 0
     ) {
-      await addBoxProduct(
-        storeId,
-        entryTarget.warehouseId,
-        entryTarget.shelfId,
-        entryTarget.subShelfId,
-        entryTarget.boxId,
-        payload
-      );
+      return;
     }
 
-    /*
-     * Add to Sub-shelf
-     */
-    else if (
-      entryTarget.level === "subShelf"
-    ) {
-      await addSubShelfProduct(
-        storeId,
-        entryTarget.warehouseId,
-        entryTarget.shelfId,
-        entryTarget.subShelfId,
-        payload
+    const product = addTarget.product;
+
+    setAdding(true);
+
+    try {
+      const payload = {
+        name: product.productName,
+        sku: product.sku ?? undefined,
+        quantity,
+      };
+
+      /*
+       * ADD PRODUCT TO SHELF
+       */
+      if (product.level === "shelf") {
+        await addProductToShelf(
+          storeId,
+          product.warehouseId,
+          product.shelfId,
+          payload
+        );
+      }
+
+      /*
+       * ADD PRODUCT TO SUB-SHELF
+       */
+      if (
+        product.level === "subshelf" &&
+        product.subShelfId
+      ) {
+        await addSubShelfProduct(
+          storeId,
+          product.warehouseId,
+          product.shelfId,
+          product.subShelfId,
+          payload
+        );
+      }
+
+      /*
+       * ADD PRODUCT TO BOX
+       */
+      if (
+        product.level === "box" &&
+        product.subShelfId &&
+        product.boxId
+      ) {
+        await addBoxProduct(
+          storeId,
+          product.warehouseId,
+          product.shelfId,
+          product.subShelfId,
+          product.boxId,
+          payload
+        );
+      }
+
+      flash(
+        `Added ${quantity} × "${product.productName}".`
       );
+
+      setAddTarget(null);
+      setAddQuantity("");
+
+      setRefreshKey((key) => key + 1);
+    } catch (err) {
+      console.error(err);
+
+      flash(
+        err instanceof Error
+          ? err.message
+          : "Could not add quantity."
+      );
+    } finally {
+      setAdding(false);
     }
-
-    flash(
-      `Added ${payload.quantity} × "${payload.name}".`
-    );
-
-    setEntryTarget(null);
-
-    /*
-     * Reload master table
-     */
-    setRefreshKey((key) => key + 1);
   };
 
   return (
-    <main className="min-h-screen bg-[#f7f7f6] px-3 py-6 sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-paper">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
 
-        <div className="overflow-visible rounded-2xl border border-zinc-300 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-sm">
 
-          {/* TITLE */}
-          <header className="border-b border-zinc-300">
+          {/* STORE HEADER */}
+          <div className="border-b border-line px-6 py-6 text-center">
+            <h1 className="text-xl font-semibold tracking-wide text-ink">
+              {store?.store_name ?? "Dashboard"}
+            </h1>
 
-            <div className="border-b border-zinc-300 px-6 py-5 text-center">
+            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-ink/45">
+              Master Warehouse Dashboard
+            </p>
+          </div>
 
-              <h1 className="text-lg font-semibold tracking-wide text-zinc-800">
-                {store?.store_name ?? "Dashboard"}
-              </h1>
+          {/* SEARCH */}
+          <div className="border-b border-line px-6 py-5">
+            <div className="mx-auto max-w-md">
 
-             
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink/70">
+                <Search className="h-4 w-4" />
+                Search Product
+              </div>
 
-            </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
 
-           
-            <div className="relative z-50 bg-[#fafafa] px-4 py-5 sm:px-8">
-
-              <div className="mx-auto max-w-md">
-
-                
-                {storeId && (
-                  <GlobalSearch
-                    storeId={storeId}
-                    onSell={openExitForSearchResult}
-                  />
-                )}
-
+                <input
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  placeholder="Search products by name or SKU..."
+                  className="w-full rounded-full border border-line bg-paper py-3 pl-11 pr-4 text-sm text-ink outline-none transition focus:border-accent"
+                />
               </div>
 
             </div>
+          </div>
 
-          </header>
-
-          {/* SUCCESS MESSAGE */}
+          {/* BANNER */}
           {banner && (
-            <div className="mx-4 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 sm:mx-6">
+            <div className="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {banner}
             </div>
           )}
 
           {/* ERROR */}
           {error && (
-            <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="mx-6 mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {/* MASTER PRODUCT TABLE */}
-          <div className="mt-5 overflow-x-auto">
-
-            <table className="w-full min-w-[1000px] border-collapse">
+          {/* TABLE */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1050px] border-collapse">
 
               <thead>
-                <tr className="bg-zinc-50">
+                <tr className="bg-paper">
 
-                  <th className="border-b border-r border-zinc-300 px-5 py-4 text-left text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">
                     Warehouse
                   </th>
 
-                  <th className="border-b border-r border-zinc-300 px-5 py-4 text-left text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">
                     Product
                   </th>
 
-                  <th className="border-b border-r border-zinc-300 px-5 py-4 text-left text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">
                     Location
                   </th>
 
-                  <th className="border-b border-r border-zinc-300 px-5 py-4 text-center text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-r border-line px-5 py-4 text-center text-sm font-semibold text-ink">
                     Qty. in Stock
                   </th>
 
-                  <th className="border-b border-r border-zinc-300 px-5 py-4 text-center text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-r border-line px-5 py-4 text-center text-sm font-semibold text-ink">
                     Add Quantity
                   </th>
 
-                  <th className="border-b border-zinc-300 px-5 py-4 text-center text-sm font-semibold text-zinc-700">
+                  <th className="border-b border-line px-5 py-4 text-center text-sm font-semibold text-ink">
                     Sell Qty
                   </th>
 
@@ -581,54 +717,54 @@ export default function DashboardPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-6 py-16 text-center text-sm text-zinc-500"
+                      className="px-6 py-16 text-center text-sm text-ink/50"
                     >
-                      Loading all products from all warehouses...
+                      Loading products from all warehouses...
                     </td>
                   </tr>
                 )}
 
                 {!loading &&
-                  products.length === 0 && (
+                  filteredProducts.length === 0 && (
                     <tr>
                       <td
                         colSpan={6}
-                        className="px-6 py-16 text-center text-sm text-zinc-400"
+                        className="px-6 py-16 text-center text-sm text-ink/50"
                       >
-                        No products found in any warehouse.
+                        No products found.
                       </td>
                     </tr>
                   )}
 
                 {!loading &&
-                  products.map((product) => (
+                  filteredProducts.map((product) => (
                     <tr
                       key={product.rowId}
-                      className="transition-colors hover:bg-zinc-50"
+                      className="transition-colors hover:bg-ink/[0.02]"
                     >
 
                       {/* WAREHOUSE */}
-                      <td className="border-b border-r border-zinc-200 px-5 py-4">
+                      <td className="border-b border-r border-line px-5 py-4">
 
-                        <div className="font-medium text-zinc-800">
+                        <div className="font-medium text-ink">
                           {product.warehouseName}
                         </div>
 
-                        <div className="mt-1 font-mono text-xs text-zinc-400">
+                        <div className="mt-1 font-mono text-xs text-ink/40">
                           {product.warehouseId}
                         </div>
 
                       </td>
 
                       {/* PRODUCT */}
-                      <td className="border-b border-r border-zinc-200 px-5 py-4">
+                      <td className="border-b border-r border-line px-5 py-4">
 
-                        <div className="font-medium text-zinc-800">
+                        <div className="font-medium text-ink">
                           {product.productName}
                         </div>
 
                         {product.sku && (
-                          <div className="mt-1 text-xs text-zinc-400">
+                          <div className="mt-1 text-xs text-ink/40">
                             SKU: {product.sku}
                           </div>
                         )}
@@ -636,58 +772,36 @@ export default function DashboardPage() {
                       </td>
 
                       {/* LOCATION */}
-                      <td className="border-b border-r border-zinc-200 px-5 py-4">
+                      <td className="border-b border-r border-line px-5 py-4">
 
-                        <span className="text-sm text-zinc-600">
+                        <span className="text-sm text-ink/70">
                           {product.location}
                         </span>
 
                       </td>
 
                       {/* QUANTITY */}
-                      <td className="border-b border-r border-zinc-200 px-5 py-4 text-center">
+                      <td className="border-b border-r border-line px-5 py-4 text-center">
 
-                        <span className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-semibold text-zinc-800">
+                        <span className="rounded-md bg-ink/5 px-3 py-1.5 text-sm font-semibold text-ink">
                           {product.quantity}
                         </span>
 
                       </td>
 
                       {/* ADD QUANTITY */}
-                      <td className="border-b border-r border-zinc-200 px-5 py-4 text-center">
+                      <td className="border-b border-r border-line px-5 py-4 text-center">
 
                         <button
                           type="button"
                           onClick={() => {
-                            if (!product.subShelfId) return;
-
-                            setEntryTarget({
-                              level: product.boxId
-                                ? "box"
-                                : "subShelf",
-
-                              productName:
-                                product.productName,
-
-                              warehouseId:
-                                product.warehouseId,
-
-                              shelfId:
-                                product.shelfId,
-
-                              subShelfId:
-                                product.subShelfId,
-
-                              boxId:
-                                product.boxId,
-
-                              label:
-                                product.boxName ??
-                                product.subShelfName ??
-                                "Location",
+                            setAddTarget({
+                              product,
                             });
+
+                            setAddQuantity("");
                           }}
-                          className="inline-flex min-w-[125px] items-center justify-center gap-2 rounded-lg border border-emerald-500 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                          className="inline-flex min-w-[145px] items-center justify-center gap-2 rounded-lg border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
                         >
                           <PackagePlus className="h-4 w-4" />
 
@@ -697,11 +811,11 @@ export default function DashboardPage() {
                       </td>
 
                       {/* SELL */}
-                      <td className="border-b border-zinc-200 px-5 py-4 text-center">
+                      <td className="border-b border-line px-5 py-4 text-center">
 
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
                             setExitTarget({
                               productId:
                                 product.productId,
@@ -714,9 +828,9 @@ export default function DashboardPage() {
 
                               sell:
                                 product.sell,
-                            })
-                          }
-                          className="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-lg border border-red-400 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                            });
+                          }}
+                          className="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-lg border border-red-400 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
                         >
                           <ShoppingCart className="h-4 w-4" />
 
@@ -731,27 +845,83 @@ export default function DashboardPage() {
               </tbody>
 
             </table>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ADD QUANTITY MODAL */}
+      {addTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+
+          <div className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-xl">
+
+            <h2 className="text-lg font-semibold text-ink">
+              Add Quantity
+            </h2>
+
+            <p className="mt-2 text-sm text-ink/60">
+              {addTarget.product.productName}
+            </p>
+
+            <p className="mt-1 text-xs text-ink/40">
+              {addTarget.product.location}
+            </p>
+
+            <input
+              type="number"
+              min="1"
+              autoFocus
+              value={addQuantity}
+              onChange={(event) =>
+                setAddQuantity(event.target.value)
+              }
+              placeholder="Enter quantity"
+              className="mt-6 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-accent"
+            />
+
+            <div className="mt-6 flex justify-end gap-3">
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAddTarget(null);
+                  setAddQuantity("");
+                }}
+                disabled={adding}
+                className="rounded-lg border border-line px-4 py-2 text-sm text-ink/70"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={submitAddQuantity}
+                disabled={adding}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {adding
+                  ? "Adding..."
+                  : "Add Quantity"}
+              </button>
+
+            </div>
 
           </div>
 
         </div>
-
-      </div>
-
-      {/* ADD QUANTITY MODAL */}
-      <StockEntryModal
-        open={entryTarget !== null}
-        targetLabel={entryTarget?.label ?? ""}
-        onClose={() => setEntryTarget(null)}
-        onSubmit={submitEntry}
-      />
+      )}
 
       {/* SELL MODAL */}
       <StockExitModal
         open={exitTarget !== null}
         productName={exitTarget?.name ?? ""}
-        currentQuantity={exitTarget?.quantity ?? 0}
-        onClose={() => setExitTarget(null)}
+        currentQuantity={
+          exitTarget?.quantity ?? 0
+        }
+        onClose={() =>
+          setExitTarget(null)
+        }
         onSubmit={submitExit}
       />
 
