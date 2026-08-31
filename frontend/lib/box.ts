@@ -1,24 +1,8 @@
+import { apiFetch } from "./api";
 import type { Box, BoxProduct, GetBoxesResponse, GetBoxProductsResponse } from "@/types/box";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error(data?.error ?? "Something went wrong. Please try again.");
-  }
-
-  return data as T;
+function basePath(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
+  return `/box/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/sub-shelf/${subShelfId}`;
 }
 
 interface BoxResponse {
@@ -27,12 +11,18 @@ interface BoxResponse {
   box: Box;
 }
 
-function basePath(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
-  return `/box/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/sub-shelf/${subShelfId}`;
+export function getBoxes(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
+  return apiFetch<GetBoxesResponse>(basePath(storeId, warehouseId, shelfId, subShelfId));
 }
 
-export function getBoxes(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
-  return request<GetBoxesResponse>(basePath(storeId, warehouseId, shelfId, subShelfId));
+export function getBox(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  subShelfId: string,
+  boxId: string
+) {
+  return apiFetch<BoxResponse>(`${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}`);
 }
 
 export function createBox(
@@ -42,7 +32,7 @@ export function createBox(
   subShelfId: string,
   payload: { name: string; description?: string }
 ) {
-  return request<BoxResponse>(basePath(storeId, warehouseId, shelfId, subShelfId), {
+  return apiFetch<BoxResponse>(basePath(storeId, warehouseId, shelfId, subShelfId), {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -55,13 +45,13 @@ export function deleteBox(
   subShelfId: string,
   boxId: string
 ) {
-  return request<{ success: boolean; message: string }>(
+  return apiFetch<{ success: boolean; message: string }>(
     `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}`,
     { method: "DELETE" }
   );
 }
 
-export function addProductToBox(
+export function addBoxProduct(
   storeId: string,
   warehouseId: string,
   shelfId: string,
@@ -69,7 +59,7 @@ export function addProductToBox(
   boxId: string,
   payload: { name: string; sku?: string; quantity: number }
 ) {
-  return request<{ success: boolean; message: string; product: BoxProduct }>(
+  return apiFetch<{ success: boolean; message: string; product: BoxProduct }>(
     `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products`,
     { method: "POST", body: JSON.stringify(payload) }
   );
@@ -82,7 +72,22 @@ export function getBoxProducts(
   subShelfId: string,
   boxId: string
 ) {
-  return request<GetBoxProductsResponse>(
+  return apiFetch<GetBoxProductsResponse>(
     `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products`
+  );
+}
+
+export function sellBoxProduct(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  subShelfId: string,
+  boxId: string,
+  productId: string,
+  quantity: number
+) {
+  return apiFetch<{ success: boolean; message: string; deleted?: boolean }>(
+    `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products/${productId}/sell`,
+    { method: "POST", body: JSON.stringify({ quantity }) }
   );
 }

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Box as BoxIcon, CheckCircle2, Plus, Warehouse as WarehouseIcon } from "lucide-react";
 
-import { getWarehouse, getWarehouses } from "@/lib/warehouse";
-import { addProductToShelf, getShelf, sellProductFromShelf, getShelves } from "@/lib/shelf";
+import { getWarehouse, getWarehouses } from "@/lib/warehouseApi";
+import { addProductToShelf, getShelf, sellProductFromShelf, getShelves } from "@/lib/shelfApi";
 import {
   addSubShelfProduct,
   getSubShelf,
