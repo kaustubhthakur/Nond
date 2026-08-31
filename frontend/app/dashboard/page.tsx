@@ -104,19 +104,7 @@ export default function DashboardPage() {
       });
   }, []);
 
-  /*
-   * LOAD PRODUCTS FROM ALL STORAGE LEVELS
-   *
-   * ALL WAREHOUSES
-   * └── ALL SHELVES
-   *     ├── SHELF PRODUCTS
-   *     │
-   *     └── ALL SUB-SHELVES
-   *         ├── SUB-SHELF PRODUCTS
-   *         │
-   *         └── ALL BOXES
-   *             └── BOX PRODUCTS
-   */
+ 
   useEffect(() => {
     if (!storeId) {
       setLoading(false);
@@ -132,19 +120,11 @@ export default function DashboardPage() {
 
         const allProducts: DashboardProduct[] = [];
 
-        /*
-         * ==========================================
-         * GET ALL WAREHOUSES
-         * ==========================================
-         */
+       
         const warehouseResponse = await getWarehouses(storeId);
 
         for (const warehouse of warehouseResponse.warehouses) {
-          /*
-           * ==========================================
-           * GET ALL SHELVES IN THIS WAREHOUSE
-           * ==========================================
-           */
+        
           let shelvesResponse;
 
           try {
@@ -161,11 +141,7 @@ export default function DashboardPage() {
           }
 
           for (const shelf of shelvesResponse.shelves) {
-            /*
-             * ==========================================
-             * 1. LOAD PRODUCTS DIRECTLY ON SHELF
-             * ==========================================
-             */
+           
             try {
               const shelfProductsResponse =
                 await getShelfProducts(
@@ -226,11 +202,7 @@ export default function DashboardPage() {
               );
             }
 
-            /*
-             * ==========================================
-             * GET ALL SUB-SHELVES
-             * ==========================================
-             */
+          
             let subShelvesResponse;
 
             try {
@@ -251,11 +223,7 @@ export default function DashboardPage() {
             for (
               const subShelf of subShelvesResponse.subShelves
             ) {
-              /*
-               * ==========================================
-               * 2. LOAD PRODUCTS DIRECTLY IN SUB-SHELF
-               * ==========================================
-               */
+            
               try {
                 const subShelfProductsResponse =
                   await getSubShelfProducts(
@@ -329,11 +297,6 @@ export default function DashboardPage() {
                 );
               }
 
-              /*
-               * ==========================================
-               * GET ALL BOXES
-               * ==========================================
-               */
               let boxesResponse;
 
               try {
@@ -353,11 +316,7 @@ export default function DashboardPage() {
               }
 
               for (const box of boxesResponse.boxes) {
-                /*
-                 * ==========================================
-                 * 3. LOAD PRODUCTS INSIDE BOX
-                 * ==========================================
-                 */
+                
                 try {
                   const boxProductsResponse =
                     await getBoxProducts(
@@ -470,9 +429,7 @@ export default function DashboardPage() {
     };
   }, [storeId, refreshKey]);
 
-  /*
-   * FILTER PRODUCTS
-   */
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -498,9 +455,7 @@ export default function DashboardPage() {
     });
   }, [products, search]);
 
-  /*
-   * FLASH MESSAGE
-   */
+ 
   const flash = (message: string) => {
     setBanner(message);
 
@@ -509,9 +464,7 @@ export default function DashboardPage() {
     }, 3500);
   };
 
-  /*
-   * SELL PRODUCT
-   */
+  
   const submitExit = async (
     quantity: number
   ) => {
@@ -528,9 +481,7 @@ export default function DashboardPage() {
     setRefreshKey((key) => key + 1);
   };
 
-  /*
-   * ADD QUANTITY
-   */
+
   const submitAddQuantity = async () => {
     if (!addTarget || !storeId) return;
 
