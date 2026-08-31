@@ -13,6 +13,19 @@
   --font-mono: var(--font-mono);
 }
 
+@layer base {
+  html,
+  body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge (Chromium) */
+  }
+}
+
 body {
   background-color: #fbfaf7;
   background-image: linear-gradient(
