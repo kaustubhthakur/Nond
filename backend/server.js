@@ -11,6 +11,7 @@ const storeRouter = require("./routes/stores");
 const warehouseRouter = require("./routes/warehouses");
 const shelfRouter = require("./routes/shelfs");
 const subShelfRouter = require("./routes/subshelf");
+const searchRouter = require("./routes/search");
 const boxRouter = require("./routes/box");
 const path = require("path");
 const PORT = process.env.PORT || 8081;
@@ -38,6 +39,9 @@ app.use("/warehouse", warehouseRouter);
 app.use("/shelf", shelfRouter);
 app.use("/subshelf", subShelfRouter);
 app.use("/box", boxRouter);
+app.use("/search", searchRouter);
+ 
+
 
 const server = http.createServer(app);
 
