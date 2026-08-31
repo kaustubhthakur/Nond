@@ -11,6 +11,7 @@ const {
   updateSubShelf,
   deleteSubShelf,
   addProduct,
+  sellProduct,
   getSubShelfProducts,
   getSubShelfOptions,
 } = require("../controllers/subshelfs");
@@ -62,6 +63,13 @@ router.get(
   "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/:subShelfId/products",
   verifyToken,
   getSubShelfProducts
+);
+
+// Subtract stock from a product on this sub-shelf — e.g. when it's sold.
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/:subShelfId/products/:productId/sell",
+  verifyToken,
+  sellProduct
 );
 
 module.exports = router;

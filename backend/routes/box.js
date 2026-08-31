@@ -12,6 +12,7 @@ const {
   deleteBox,
   getBoxOptions,
   addProduct,
+  sellProduct,
   getBoxProducts,
 } = require("../controllers/box");
 
@@ -61,6 +62,13 @@ router.get(
   "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/sub-shelf/:subShelfId/:boxId/products",
   verifyToken,
   getBoxProducts
+);
+
+
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/shelf/:shelfId/sub-shelf/:subShelfId/:boxId/products/:productId/sell",
+  verifyToken,
+  sellProduct
 );
 
 module.exports = router;

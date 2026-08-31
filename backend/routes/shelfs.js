@@ -12,6 +12,7 @@ const {
   deleteShelf,
   getShelfOptions,
   addProductToShelf,
+  sellProductFromShelf,
 } = require("../controllers/shelfs");
 
 router.get(
@@ -54,6 +55,13 @@ router.post(
   "/store/:storeId/warehouse/:warehouseId/:shelfId/product",
   verifyToken,
   addProductToShelf
+);
+
+// Subtract stock from a product on this shelf — e.g. when it's sold.
+router.post(
+  "/store/:storeId/warehouse/:warehouseId/:shelfId/product/:productId/sell",
+  verifyToken,
+  sellProductFromShelf
 );
 
 module.exports = router;
