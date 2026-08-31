@@ -36,3 +36,18 @@ export interface UpdateWarehousePayload {
   description?: string;
   address?: string;
 }
+export interface Warehouse {
+  id: string;
+  storeId: string;
+  name: string;
+  description: string | null;
+  shelfCapacity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetWarehousesResponse {
+  success: boolean;
+  count: number;
+  warehouses: Warehouse[];
+}
