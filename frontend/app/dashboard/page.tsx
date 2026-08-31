@@ -503,25 +503,16 @@ export default function DashboardPage() {
                 {store?.store_name ?? "Dashboard"}
               </h1>
 
-              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-400">
-                Master Warehouse Dashboard
-              </p>
+             
 
             </div>
 
-            {/* SEARCH */}
+           
             <div className="relative z-50 bg-[#fafafa] px-4 py-5 sm:px-8">
 
               <div className="mx-auto max-w-md">
 
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-600">
-                  <Search className="h-4 w-4" />
-
-                  <span>
-                    Search Product
-                  </span>
-                </div>
-
+                
                 {storeId && (
                   <GlobalSearch
                     storeId={storeId}
