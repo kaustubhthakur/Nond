@@ -15,9 +15,7 @@ const getStoreForUser = async (
   );
 };
 
-// GET /stores/:storeId/products/search?q=...
-// Finds a product anywhere in the store (shelf, sub-shelf, or box)
-// by name / sku / product ID, and returns exactly where it lives.
+
 exports.searchProducts = async (
   req,
   res
@@ -58,8 +56,7 @@ exports.searchProducts = async (
         q
       );
 
-    // Cache lookups within this request so the same warehouse/shelf/
-    // sub-shelf/box isn't fetched twice when several matches share it.
+  
     const cache = new Map();
 
     const cachedGet = async (
