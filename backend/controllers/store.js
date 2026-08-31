@@ -1,6 +1,5 @@
 const Store = require("../models/Store");
-const { db } = require("../firebase");
-
+const { db } = require("../firebase/index.js");
 const BUSINESS_TYPES = [
   "retail",
   "wholesale",

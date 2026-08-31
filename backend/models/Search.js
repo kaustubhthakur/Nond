@@ -1,19 +1,17 @@
-const { db } = require("../firebase");
+const { db } = require("../firebase/index.js");
 
-exports.searchProducts = async (
-  storeId,
-  queryText
-) => {
-  const snapshot = await db
-    .collectionGroup("products")
-    .where("storeId", "==", String(storeId))
-    .get();
+exports.searchProducts = async (storeId, queryText) => {
+  const store = String(storeId || "").trim();
+  const term = String(queryText || "").trim().toLowerCase();
 
-  const term = queryText.trim().toLowerCase();
-
-  if (!term) {
+  if (!store || !term) {
     return [];
   }
+
+  const snapshot = await db
+    .collectionGroup("products")
+    .where("storeId", "==", store)
+    .get();
 
   const matches = snapshot.docs
     .map((doc) => ({
@@ -21,18 +19,11 @@ exports.searchProducts = async (
       ...doc.data(),
     }))
     .filter((product) => {
-      const name = (
-        product.name || ""
-      ).toLowerCase();
+      const name = String(product.name || "").toLowerCase();
+      const sku = String(product.sku || "").toLowerCase();
 
-      const sku = (
-        product.sku || ""
-      ).toLowerCase();
-
-      const productId = (
-        product.productId ||
-        product.id ||
-        ""
+      const productId = String(
+        product.productId || product.id || ""
       ).toLowerCase();
 
       return (

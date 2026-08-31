@@ -1,4 +1,4 @@
-const { db } = require("../firebase");
+const { db } = require("../firebase/index.js");
 
 const MAX_PRODUCTS = 25;
 

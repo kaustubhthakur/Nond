@@ -1,5 +1,5 @@
+require("dotenv").config({ override: true });
 const express = require("express");
-require("dotenv").config();
 
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -15,7 +15,8 @@ const searchRouter = require("./routes/search");
 const boxRouter = require("./routes/box");
 const path = require("path");
 const PORT = process.env.PORT || 8081;
-
+console.log("CWD:", process.cwd());
+console.log("__dirname:", __dirname);
 const app = express();
 
 app.use(

@@ -5,25 +5,15 @@ const Shelf = require("../models/Shelf");
 const SubShelf = require("../models/SubShelf");
 const Box = require("../models/Box");
 
-const getStoreForUser = async (
-  userId,
-  storeId
-) => {
-  return await Store.getStoreById(
-    storeId,
-    userId
-  );
+const getStoreForUser = async (userId, storeId) => {
+  return await Store.getStoreById(storeId, userId);
 };
 
-
-exports.searchProducts = async (
-  req,
-  res
-) => {
+exports.searchProducts = async (req, res) => {
   try {
     const userId = req.user.id;
     const { storeId } = req.params;
-    const { q } = req.query;
+    const q = String(req.query.q || "").trim();
 
     if (!storeId) {
       return res.status(400).json({
@@ -31,104 +21,103 @@ exports.searchProducts = async (
       });
     }
 
-    if (!q || !q.trim()) {
+    if (!q) {
       return res.status(400).json({
         error: "Search query is required",
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(userId, storeId);
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const rawMatches =
-      await Search.searchProducts(
-        storeId,
-        q
-      );
+    const rawMatches = await Search.searchProducts(
+      storeId,
+      q
+    );
 
-  
     const cache = new Map();
 
-    const cachedGet = async (
-      key,
-      fetcher
-    ) => {
+    const cachedGet = async (key, fetcher) => {
       if (cache.has(key)) {
         return cache.get(key);
       }
 
       const value = await fetcher();
       cache.set(key, value);
+
       return value;
     };
 
     const results = await Promise.all(
       rawMatches.map(async (product) => {
-        const warehouse = await cachedGet(
-          `w:${product.warehouseId}`,
-          () =>
-            Warehouse.getWarehouse(
-              storeId,
-              product.warehouseId
-            )
-        );
-
-        const shelf = product.shelfId
+        const warehouse = product.warehouseId
           ? await cachedGet(
-              `s:${product.shelfId}`,
+              `w:${product.warehouseId}`,
               () =>
-                Shelf.getShelf(
+                Warehouse.getWarehouse(
                   storeId,
-                  product.warehouseId,
-                  product.shelfId
+                  product.warehouseId
                 )
             )
           : null;
 
-        const subShelf = product.subShelfId
-          ? await cachedGet(
-              `ss:${product.subShelfId}`,
-              () =>
-                SubShelf.getSubShelf(
-                  storeId,
-                  product.warehouseId,
-                  product.shelfId,
-                  product.subShelfId
-                )
-            )
-          : null;
+        const shelf =
+          product.warehouseId && product.shelfId
+            ? await cachedGet(
+                `s:${product.warehouseId}:${product.shelfId}`,
+                () =>
+                  Shelf.getShelf(
+                    storeId,
+                    product.warehouseId,
+                    product.shelfId
+                  )
+              )
+            : null;
 
-        const box = product.boxId
-          ? await cachedGet(
-              `b:${product.boxId}`,
-              () =>
-                Box.getBox(
-                  storeId,
-                  product.warehouseId,
-                  product.shelfId,
-                  product.subShelfId,
-                  product.boxId
-                )
-            )
-          : null;
+        const subShelf =
+          product.warehouseId &&
+          product.shelfId &&
+          product.subShelfId
+            ? await cachedGet(
+                `ss:${product.warehouseId}:${product.shelfId}:${product.subShelfId}`,
+                () =>
+                  SubShelf.getSubShelf(
+                    storeId,
+                    product.warehouseId,
+                    product.shelfId,
+                    product.subShelfId
+                  )
+              )
+            : null;
+
+        const box =
+          product.warehouseId &&
+          product.shelfId &&
+          product.subShelfId &&
+          product.boxId
+            ? await cachedGet(
+                `b:${product.warehouseId}:${product.shelfId}:${product.subShelfId}:${product.boxId}`,
+                () =>
+                  Box.getBox(
+                    storeId,
+                    product.warehouseId,
+                    product.shelfId,
+                    product.subShelfId,
+                    product.boxId
+                  )
+              )
+            : null;
 
         const path = [
-          warehouse
-            ? warehouse.name
-            : "Unknown warehouse",
-          shelf ? shelf.name : null,
-          subShelf ? subShelf.name : null,
-          box ? box.name : null,
+          warehouse?.name,
+          shelf?.name,
+          subShelf?.name,
+          box?.name,
         ]
           .filter(Boolean)
           .join(" / ");
@@ -136,39 +125,23 @@ exports.searchProducts = async (
         return {
           product: {
             id: product.id,
-            name:
-              product.name || null,
+            name: product.name || null,
             sku: product.sku || null,
-            quantity:
-              product.quantity || 0,
+            quantity: product.quantity ?? 0,
           },
 
           location: {
-            warehouseId:
-              product.warehouseId,
-            warehouseName: warehouse
-              ? warehouse.name
-              : null,
+            warehouseId: product.warehouseId,
+            warehouseName: warehouse?.name || null,
 
-            shelfId:
-              product.shelfId ||
-              null,
-            shelfName: shelf
-              ? shelf.name
-              : null,
+            shelfId: product.shelfId || null,
+            shelfName: shelf?.name || null,
 
-            subShelfId:
-              product.subShelfId ||
-              null,
-            subShelfName: subShelf
-              ? subShelf.name
-              : null,
+            subShelfId: product.subShelfId || null,
+            subShelfName: subShelf?.name || null,
 
-            boxId:
-              product.boxId || null,
-            boxName: box
-              ? box.name
-              : null,
+            boxId: product.boxId || null,
+            boxName: box?.name || null,
           },
 
           path,
@@ -183,15 +156,10 @@ exports.searchProducts = async (
       results,
     });
   } catch (err) {
-    console.error(
-      "Search products error:",
-      err
-    );
+    console.error("Search products error:", err);
 
     return res.status(500).json({
-      error:
-        err.message ||
-        "Failed to search products",
+      error: err.message || "Failed to search products",
     });
   }
 };
