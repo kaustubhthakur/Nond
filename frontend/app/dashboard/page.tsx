@@ -633,19 +633,14 @@ export default function DashboardPage() {
               {store?.store_name ?? "Dashboard"}
             </h1>
 
-            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-ink/45">
-              Master Warehouse Dashboard
-            </p>
+           
           </div>
 
           {/* SEARCH */}
           <div className="border-b border-line px-6 py-5">
             <div className="mx-auto max-w-md">
 
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink/70">
-                <Search className="h-4 w-4" />
-                Search Product
-              </div>
+              
 
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
