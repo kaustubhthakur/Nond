@@ -110,3 +110,22 @@ export function getSubShelfProducts(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products`
   );
 }
+export function sellSubShelfProduct(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  subShelfId: string,
+  productId: string,
+  quantity: number
+) {
+  return request<{
+    success: boolean;
+    message: string;
+    deleted?: boolean;
+    remainingQuantity?: number;
+  }>(
+    `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products/${productId}/sell`,
+    { method: "POST", body: JSON.stringify({ quantity }) }
+  );
+}
+export const addSubShelfProduct = addProductToSubShelf;

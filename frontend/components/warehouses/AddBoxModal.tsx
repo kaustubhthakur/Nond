@@ -18,51 +18,58 @@ export function AddBoxModal({
   onAdd,
 }: AddBoxModalProps) {
   const [name, setName] = useState("");
-  const [capacity, setCapacity] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+      }
     };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [onClose]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
       setError("Box name is required");
       return;
     }
 
-    const cap = Number(capacity);
-    if (!Number.isInteger(cap) || cap <= 0) {
-      setError("Capacity must be a positive whole number");
-      return;
-    }
-
-    if (cap > availableCapacity) {
+    if (availableCapacity <= 0) {
       setError(
-        `Only ${availableCapacity} unit${
-          availableCapacity === 1 ? "" : "s"
-        } of space left on this sub-shelf`
+        "This sub-shelf already has the maximum number of boxes"
       );
       return;
     }
 
     setSubmitting(true);
+
     try {
-      await onAdd({ name: name.trim(), capacity: cap });
+      await onAdd({
+        name: trimmedName,
+      });
+
+      setName("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create box");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Failed to create box"
+      );
+    } finally {
       setSubmitting(false);
-      return;
     }
-    setSubmitting(false);
   };
 
   return (
@@ -72,21 +79,30 @@ export function AddBoxModal({
           <h2 className="font-display italic text-xl text-ink">
             Add box to {subShelfName}
           </h2>
+
           <button
             type="button"
             onClick={onClose}
-            className="text-ink/40 hover:text-ink text-lg leading-none"
+            disabled={submitting}
+            className="text-ink/40 hover:text-ink text-lg leading-none disabled:opacity-50"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="box-name">
+            <label
+              className="eyebrow text-ink/60"
+              htmlFor="box-name"
+            >
               Name
             </label>
+
             <input
               id="box-name"
               type="text"
@@ -95,30 +111,35 @@ export function AddBoxModal({
               className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
               placeholder="e.g. Box A"
               autoFocus
+              disabled={submitting}
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="box-capacity">
+          <div className="border border-line px-3 py-2">
+            <p className="eyebrow text-ink/60">
               Capacity
-            </label>
-            <input
-              id="box-capacity"
-              type="number"
-              min={1}
-              max={availableCapacity}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              placeholder="e.g. 25"
-            />
-            <p className="text-xs text-ink/40">
-              {availableCapacity.toLocaleString()} unit
-              {availableCapacity === 1 ? "" : "s"} of space left on this sub-shelf
+            </p>
+
+            <p className="text-sm text-ink mt-1">
+              25 units
+            </p>
+
+            <p className="text-xs text-ink/40 mt-1">
+              Each box can hold up to 25 units.
             </p>
           </div>
 
-          {error ? <p className="text-xs text-rust">{error}</p> : null}
+          <div className="text-xs text-ink/40">
+            {availableCapacity} box
+            {availableCapacity === 1 ? "" : "es"} available
+            on this sub-shelf
+          </div>
+
+          {error && (
+            <p className="text-xs text-rust">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 mt-1">
             <button
@@ -129,12 +150,18 @@ export function AddBoxModal({
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              disabled={submitting || availableCapacity <= 0}
+              disabled={
+                submitting ||
+                availableCapacity <= 0
+              }
               className="eyebrow border border-accent bg-accent text-paper px-3 py-1.5 hover:bg-transparent hover:text-accent transition-colors disabled:opacity-50"
             >
-              {submitting ? "Creating…" : "Add box"}
+              {submitting
+                ? "Creating…"
+                : "Add box"}
             </button>
           </div>
         </form>

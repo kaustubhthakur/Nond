@@ -106,6 +106,7 @@ exports.createBox = async ({
   }
 
   const boxRef = boxesRef.doc();
+  const now = new Date();
 
   const box = {
     id: boxRef.id,
@@ -115,22 +116,23 @@ exports.createBox = async ({
     shelfId: String(shelfId),
     subShelfId: String(subShelfId),
 
-    name,
-    description: description || null,
+    name: name.trim(),
+    description: description
+      ? description.trim()
+      : null,
 
     capacity: MAX_PRODUCTS,
     productQuantity: 0,
     availableCapacity: MAX_PRODUCTS,
 
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
   };
 
   await boxRef.set(box);
 
   return box;
 };
-
 exports.getBoxes = async (
   storeId,
   warehouseId,

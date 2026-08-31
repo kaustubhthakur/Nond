@@ -203,3 +203,12 @@ export const shelfApi = {
       }
     ),
 };
+
+export const getShelves = shelfApi.list;
+export const getShelf = shelfApi.get;
+export const createShelf = shelfApi.create;
+export const updateShelf = shelfApi.update;
+export const removeShelf = shelfApi.remove;
+export const addProductToShelf = shelfApi.addProduct;
+export const getShelfProducts = shelfApi.getProducts;
+export const sellProductFromShelf = shelfApi.sellProduct;

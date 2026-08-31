@@ -87,3 +87,8 @@ export const warehouseApi = {
       { method: "DELETE" }
     ),
 };
+export const getWarehouses = warehouseApi.list;
+export const getWarehouse = warehouseApi.get;
+export const createWarehouse = warehouseApi.create;
+export const updateWarehouse = warehouseApi.update;
+export const removeWarehouse = warehouseApi.remove;
