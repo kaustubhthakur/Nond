@@ -365,6 +365,119 @@ exports.addProduct = async (
   });
 };
 
+/**
+ * Subtracts sold/removed stock from a product that lives directly
+ * on a sub-shelf (no box). Mirrors Box.sellProduct but one level
+ * shallower — rolls the amount back off the parent shelf too.
+ *
+ * If the product's quantity hits 0, the product document is
+ * deleted entirely.
+ *
+ * Returns { id, remainingQuantity, soldQuantity, deleted }.
+ */
+exports.sellProduct = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId,
+  productId,
+  quantity
+) => {
+  const subShelfRef = getSubShelfRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  );
+  const shelfRef = getShelfRef(
+    storeId,
+    warehouseId,
+    shelfId
+  );
+  const productRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  ).doc(String(productId));
+
+  return await db.runTransaction(async (transaction) => {
+    const productDoc = await transaction.get(productRef);
+
+    if (!productDoc.exists) {
+      throw new Error("Product not found on this sub-shelf");
+    }
+
+    const subShelfDoc = await transaction.get(subShelfRef);
+
+    if (!subShelfDoc.exists) {
+      throw new Error("Sub-shelf not found");
+    }
+
+    const shelfDoc = await transaction.get(shelfRef);
+
+    if (!shelfDoc.exists) {
+      throw new Error("Parent shelf not found");
+    }
+
+    const productData = productDoc.data();
+    const currentProductQuantity = productData.quantity || 0;
+
+    if (quantity > currentProductQuantity) {
+      throw new Error(
+        `Only ${currentProductQuantity} unit(s) of this product available to sell`
+      );
+    }
+
+    const newProductQuantity =
+      currentProductQuantity - quantity;
+
+    const subShelfData = subShelfDoc.data();
+    const subShelfCapacity = subShelfData.capacity || 0;
+    const newSubShelfQuantity = Math.max(
+      0,
+      (subShelfData.productQuantity || 0) - quantity
+    );
+
+    const shelfData = shelfDoc.data();
+    const shelfCapacity = shelfData.capacity || 0;
+    const newShelfQuantity = Math.max(
+      0,
+      (shelfData.productQuantity || 0) - quantity
+    );
+
+    const now = new Date();
+
+    if (newProductQuantity === 0) {
+      transaction.delete(productRef);
+    } else {
+      transaction.update(productRef, {
+        quantity: newProductQuantity,
+        updatedAt: now,
+      });
+    }
+
+    transaction.update(subShelfRef, {
+      productQuantity: newSubShelfQuantity,
+      availableCapacity: subShelfCapacity - newSubShelfQuantity,
+      updatedAt: now,
+    });
+
+    transaction.update(shelfRef, {
+      productQuantity: newShelfQuantity,
+      availableCapacity: shelfCapacity - newShelfQuantity,
+      updatedAt: now,
+    });
+
+    return {
+      id: productRef.id,
+      remainingQuantity: newProductQuantity,
+      soldQuantity: quantity,
+      deleted: newProductQuantity === 0,
+    };
+  });
+};
+
 exports.getProducts = async (
   storeId,
   warehouseId,

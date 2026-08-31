@@ -441,6 +441,148 @@ exports.addProduct = async (
   });
 };
 
+/**
+ * Subtracts sold/removed stock from a product inside a box.
+ * Runs in a transaction so concurrent sells can't push quantity
+ * negative, and rolls the same amount back off the parent
+ * sub-shelf and shelf aggregates in the same transaction.
+ *
+ * If the product's quantity hits 0, the product document is
+ * deleted entirely (nothing left to track).
+ *
+ * Returns { id, remainingQuantity, soldQuantity, deleted }.
+ */
+exports.sellProduct = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  subShelfId,
+  boxId,
+  productId,
+  quantity
+) => {
+  const boxRef = getBoxRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId,
+    boxId
+  );
+  const subShelfRef = getSubShelfRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId
+  );
+  const shelfRef = getShelfRef(
+    storeId,
+    warehouseId,
+    shelfId
+  );
+  const productRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId,
+    boxId
+  ).doc(String(productId));
+
+  return await db.runTransaction(async (transaction) => {
+    const productDoc = await transaction.get(productRef);
+
+    if (!productDoc.exists) {
+      throw new Error("Product not found in this box");
+    }
+
+    const boxDoc = await transaction.get(boxRef);
+
+    if (!boxDoc.exists) {
+      throw new Error("Box not found");
+    }
+
+    const subShelfDoc = await transaction.get(subShelfRef);
+
+    if (!subShelfDoc.exists) {
+      throw new Error("Parent sub-shelf not found");
+    }
+
+    const shelfDoc = await transaction.get(shelfRef);
+
+    if (!shelfDoc.exists) {
+      throw new Error("Parent shelf not found");
+    }
+
+    const productData = productDoc.data();
+    const currentProductQuantity = productData.quantity || 0;
+
+    if (quantity > currentProductQuantity) {
+      throw new Error(
+        `Only ${currentProductQuantity} unit(s) of this product available to sell`
+      );
+    }
+
+    const newProductQuantity =
+      currentProductQuantity - quantity;
+
+    const boxData = boxDoc.data();
+    const boxCapacity = boxData.capacity || MAX_PRODUCTS;
+    const newBoxQuantity = Math.max(
+      0,
+      (boxData.productQuantity || 0) - quantity
+    );
+
+    const subShelfData = subShelfDoc.data();
+    const subShelfCapacity = subShelfData.capacity || 0;
+    const newSubShelfQuantity = Math.max(
+      0,
+      (subShelfData.productQuantity || 0) - quantity
+    );
+
+    const shelfData = shelfDoc.data();
+    const shelfCapacity = shelfData.capacity || 0;
+    const newShelfQuantity = Math.max(
+      0,
+      (shelfData.productQuantity || 0) - quantity
+    );
+
+    const now = new Date();
+
+    if (newProductQuantity === 0) {
+      transaction.delete(productRef);
+    } else {
+      transaction.update(productRef, {
+        quantity: newProductQuantity,
+        updatedAt: now,
+      });
+    }
+
+    transaction.update(boxRef, {
+      productQuantity: newBoxQuantity,
+      availableCapacity: boxCapacity - newBoxQuantity,
+      updatedAt: now,
+    });
+
+    transaction.update(subShelfRef, {
+      productQuantity: newSubShelfQuantity,
+      availableCapacity: subShelfCapacity - newSubShelfQuantity,
+      updatedAt: now,
+    });
+
+    transaction.update(shelfRef, {
+      productQuantity: newShelfQuantity,
+      availableCapacity: shelfCapacity - newShelfQuantity,
+      updatedAt: now,
+    });
+
+    return {
+      id: productRef.id,
+      remainingQuantity: newProductQuantity,
+      soldQuantity: quantity,
+      deleted: newProductQuantity === 0,
+    };
+  });
+};
+
 exports.getProducts = async (
   storeId,
   warehouseId,

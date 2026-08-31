@@ -279,3 +279,95 @@ exports.addProductToShelf = async ({
 
   return product;
 };
+
+/**
+ * Subtracts sold/removed stock from a product that lives directly
+ * on a shelf (no sub-shelf/box). Keyed by productId to match
+ * addProductToShelf's existing pattern.
+ *
+ * If the product's quantity hits 0, the product document is
+ * deleted entirely.
+ *
+ * Returns { id, remainingQuantity, soldQuantity, deleted }.
+ */
+exports.sellProductFromShelf = async ({
+  storeId,
+  warehouseId,
+  shelfId,
+  productId,
+  quantity,
+}) => {
+  const shelfRef = getShelvesRef(
+    storeId,
+    warehouseId
+  ).doc(String(shelfId));
+
+  const productsRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId
+  );
+
+  const productRef = productsRef.doc(
+    String(productId)
+  );
+
+  return await db.runTransaction(async (transaction) => {
+    const productDoc = await transaction.get(productRef);
+
+    if (!productDoc.exists) {
+      throw new Error("Product not found on this shelf");
+    }
+
+    const shelfDoc = await transaction.get(shelfRef);
+
+    if (!shelfDoc.exists) {
+      throw new Error("Shelf not found");
+    }
+
+    const productData = productDoc.data();
+    const currentProductQuantity =
+      productData.quantity || 0;
+
+    if (quantity > currentProductQuantity) {
+      throw new Error(
+        `Only ${currentProductQuantity} unit(s) of this product available to sell`
+      );
+    }
+
+    const newProductQuantity =
+      currentProductQuantity - quantity;
+
+    const shelfData = shelfDoc.data();
+    const shelfCapacity =
+      shelfData.capacity || MAX_PRODUCTS;
+    const newShelfQuantity = Math.max(
+      0,
+      (shelfData.productQuantity || 0) - quantity
+    );
+
+    const now = new Date();
+
+    if (newProductQuantity === 0) {
+      transaction.delete(productRef);
+    } else {
+      transaction.update(productRef, {
+        quantity: newProductQuantity,
+        updatedAt: now,
+      });
+    }
+
+    transaction.update(shelfRef, {
+      productQuantity: newShelfQuantity,
+      availableCapacity: shelfCapacity - newShelfQuantity,
+      updatedAt: now,
+    });
+
+    return {
+      id: productRef.id,
+      remainingQuantity: newProductQuantity,
+      soldQuantity: quantity,
+      deleted: newProductQuantity === 0,
+    };
+  });
+};
