@@ -78,13 +78,7 @@ export default function InventoryDashboardPage() {
       boxId?: string | null;
     }) => {
       const params = new URLSearchParams();
-      const merged = {
-        warehouseId,
-        shelfId,
-        subShelfId,
-        boxId,
-        ...next,
-      };
+      const merged = { warehouseId, shelfId, subShelfId, boxId, ...next };
       if (merged.warehouseId) params.set("warehouseId", merged.warehouseId);
       if (merged.shelfId) params.set("shelfId", merged.shelfId);
       if (merged.subShelfId) params.set("subShelfId", merged.subShelfId);
@@ -190,25 +184,19 @@ export default function InventoryDashboardPage() {
 
   const trail: Crumb[] = useMemo(() => {
     const items: Crumb[] = [
-      { label: "Inventory", onClick: () => navigate({ warehouseId: null, shelfId: null, subShelfId: null, boxId: null }) },
+      {
+        label: "Inventory",
+        onClick: () => navigate({ warehouseId: null, shelfId: null, subShelfId: null, boxId: null }),
+      },
     ];
     if (warehouse) {
-      items.push({
-        label: warehouse.name,
-        onClick: () => navigate({ shelfId: null, subShelfId: null, boxId: null }),
-      });
+      items.push({ label: warehouse.name, onClick: () => navigate({ shelfId: null, subShelfId: null, boxId: null }) });
     }
     if (shelf) {
-      items.push({
-        label: shelf.name,
-        onClick: () => navigate({ subShelfId: null, boxId: null }),
-      });
+      items.push({ label: shelf.name, onClick: () => navigate({ subShelfId: null, boxId: null }) });
     }
     if (subShelf) {
-      items.push({
-        label: subShelf.name,
-        onClick: () => navigate({ boxId: null }),
-      });
+      items.push({ label: subShelf.name, onClick: () => navigate({ boxId: null }) });
     }
     if (box) {
       items.push({ label: box.name });
@@ -227,16 +215,13 @@ export default function InventoryDashboardPage() {
     } else if (entryTarget.level === "box" && warehouseId && shelfId && subShelfId && boxId) {
       await addBoxProduct(storeId, warehouseId, shelfId, subShelfId, boxId, payload);
     }
-    flash(`Added ${payload.quantity} × “${payload.name}”.`);
+    flash(`Added ${payload.quantity} × "${payload.name}".`);
     setRefreshKey((k) => k + 1);
   };
 
   // ---- exit (sell / remove stock) ----
 
-  const openExitForRow = (
-    row: ProductRow,
-    sell: (quantity: number) => Promise<void>
-  ) => {
+  const openExitForRow = (row: ProductRow, sell: (quantity: number) => Promise<void>) => {
     setExitTarget({ productId: row.id, name: row.name, quantity: row.quantity, sell });
   };
 
@@ -258,24 +243,11 @@ export default function InventoryDashboardPage() {
       };
     } else if (location.subShelfId && location.shelfId) {
       sell = async (qty) => {
-        await sellSubShelfProduct(
-          storeId,
-          location.warehouseId,
-          location.shelfId!,
-          location.subShelfId!,
-          result.product.id,
-          qty
-        );
+        await sellSubShelfProduct(storeId, location.warehouseId, location.shelfId!, location.subShelfId!, result.product.id, qty);
       };
     } else if (location.shelfId) {
       sell = async (qty) => {
-        await sellProductFromShelf(
-          storeId,
-          location.warehouseId,
-          location.shelfId!,
-          result.product.id,
-          qty
-        );
+        await sellProductFromShelf(storeId, location.warehouseId, location.shelfId!, result.product.id, qty);
       };
     } else {
       return;
@@ -292,7 +264,7 @@ export default function InventoryDashboardPage() {
   const submitExit = async (quantity: number) => {
     if (!exitTarget) return;
     await exitTarget.sell(quantity);
-    flash(`Removed ${quantity} × “${exitTarget.name}”.`);
+    flash(`Removed ${quantity} × "${exitTarget.name}".`);
     setRefreshKey((k) => k + 1);
   };
 
@@ -338,9 +310,7 @@ export default function InventoryDashboardPage() {
                 {box?.name ?? subShelf?.name ?? shelf?.name ?? warehouse?.name}
               </h1>
               {(box ?? subShelf ?? shelf)?.description && (
-                <p className="mt-1 text-sm text-ink/50">
-                  {(box ?? subShelf ?? shelf)?.description}
-                </p>
+                <p className="mt-1 text-sm text-ink/50">{(box ?? subShelf ?? shelf)?.description}</p>
               )}
             </div>
             <div className="w-48">
@@ -399,9 +369,7 @@ export default function InventoryDashboardPage() {
                       used={s.productQuantity}
                       total={s.capacity}
                       onOpen={() => navigate({ shelfId: s.id })}
-                      onQuickAdd={() =>
-                        setEntryTarget({ level: "shelf", label: s.name })
-                      }
+                      onQuickAdd={() => setEntryTarget({ level: "shelf", label: s.name })}
                     />
                   ))}
                 </div>
@@ -417,8 +385,7 @@ export default function InventoryDashboardPage() {
                   title="Sub-shelves"
                   action={{
                     label: "Add stock to shelf",
-                    onClick: () =>
-                      setEntryTarget({ level: "shelf", label: shelf?.name ?? "Shelf" }),
+                    onClick: () => setEntryTarget({ level: "shelf", label: shelf?.name ?? "Shelf" }),
                   }}
                 />
                 {subShelves.length === 0 ? (
@@ -433,9 +400,7 @@ export default function InventoryDashboardPage() {
                         used={ss.productQuantity}
                         total={ss.capacity}
                         onOpen={() => navigate({ subShelfId: ss.id })}
-                        onQuickAdd={() =>
-                          setEntryTarget({ level: "subShelf", label: ss.name })
-                        }
+                        onQuickAdd={() => setEntryTarget({ level: "subShelf", label: ss.name })}
                       />
                     ))}
                   </div>
@@ -456,25 +421,14 @@ export default function InventoryDashboardPage() {
                   title="Products on this sub-shelf"
                   action={{
                     label: "Add stock",
-                    onClick: () =>
-                      setEntryTarget({
-                        level: "subShelf",
-                        label: subShelf?.name ?? "Sub-shelf",
-                      }),
+                    onClick: () => setEntryTarget({ level: "subShelf", label: subShelf?.name ?? "Sub-shelf" }),
                   }}
                 />
                 <ProductTable
                   products={subShelfProducts}
                   onSell={(row) =>
                     openExitForRow(row, async (qty) => {
-                      await sellSubShelfProduct(
-                        storeId,
-                        warehouseId!,
-                        shelfId!,
-                        subShelfId!,
-                        row.id,
-                        qty
-                      );
+                      await sellSubShelfProduct(storeId, warehouseId!, shelfId!, subShelfId!, row.id, qty);
                     })
                   }
                   emptyHint="No products placed directly on this sub-shelf."
@@ -495,9 +449,7 @@ export default function InventoryDashboardPage() {
                         used={b.productQuantity}
                         total={b.capacity}
                         onOpen={() => navigate({ boxId: b.id })}
-                        onQuickAdd={() =>
-                          setEntryTarget({ level: "box", label: b.name })
-                        }
+                        onQuickAdd={() => setEntryTarget({ level: "box", label: b.name })}
                       />
                     ))}
                   </div>
@@ -511,24 +463,13 @@ export default function InventoryDashboardPage() {
             <section className="space-y-4">
               <SectionHeading
                 title="Products in this box"
-                action={{
-                  label: "Add stock",
-                  onClick: () => setEntryTarget({ level: "box", label: box?.name ?? "Box" }),
-                }}
+                action={{ label: "Add stock", onClick: () => setEntryTarget({ level: "box", label: box?.name ?? "Box" }) }}
               />
               <ProductTable
                 products={boxProducts}
                 onSell={(row) =>
                   openExitForRow(row, async (qty) => {
-                    await sellBoxProduct(
-                      storeId,
-                      warehouseId!,
-                      shelfId!,
-                      subShelfId!,
-                      boxId!,
-                      row.id,
-                      qty
-                    );
+                    await sellBoxProduct(storeId, warehouseId!, shelfId!, subShelfId!, boxId!, row.id, qty);
                   })
                 }
                 emptyHint="No products in this box yet."
