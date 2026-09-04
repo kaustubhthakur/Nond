@@ -5,27 +5,12 @@ const Warehouse = require("../models/Warehouse");
 const MAX_SUBSHELVES = 10;
 const MAX_PRODUCTS = 1250;
 
-const getStoreForUser = async (
-  userId,
-  storeId
-) => {
-  const store =
-    await Store.getStoreById(
-      storeId,
-      userId
-    );
-
-  return store;
+const getStoreForUser = async (userId, storeId) => {
+  return await Store.getStoreById(storeId, userId);
 };
 
-const getWarehouse = async (
-  storeId,
-  warehouseId
-) => {
-  return await Warehouse.getWarehouse(
-    storeId,
-    warehouseId
-  );
+const getWarehouse = async (storeId, warehouseId) => {
+  return await Warehouse.getWarehouse(storeId, warehouseId);
 };
 
 const validateName = (name) => {
@@ -43,9 +28,7 @@ const validateName = (name) => {
   return null;
 };
 
-const validateDescription = (
-  description
-) => {
+const validateDescription = (description) => {
   if (
     description !== undefined &&
     description !== null &&
@@ -64,10 +47,47 @@ const validateDescription = (
   return null;
 };
 
-exports.createShelf = async (
-  req,
-  res
-) => {
+const validateProductId = (productId) => {
+  if (
+    productId === undefined ||
+    productId === null ||
+    !String(productId).trim()
+  ) {
+    return "Product ID is required";
+  }
+
+  return null;
+};
+
+const validateLogo = (logo) => {
+  if (
+    logo !== undefined &&
+    logo !== null &&
+    typeof logo !== "string"
+  ) {
+    return "Logo must be a string";
+  }
+
+  return null;
+};
+
+const validatePrice = (price) => {
+  const value = Number(price);
+
+  if (
+    price === undefined ||
+    price === null ||
+    price === "" ||
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return "Price must be a valid non-negative number";
+  }
+
+  return null;
+};
+
+exports.createShelf = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -89,29 +109,25 @@ exports.createShelf = async (
 
     if (!warehouseId) {
       return res.status(400).json({
-        error:
-          "Warehouse ID is required",
+        error: "Warehouse ID is required",
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -119,8 +135,7 @@ exports.createShelf = async (
       });
     }
 
-    const nameError =
-      validateName(name);
+    const nameError = validateName(name);
 
     if (nameError) {
       return res.status(400).json({
@@ -129,9 +144,7 @@ exports.createShelf = async (
     }
 
     const descriptionError =
-      validateDescription(
-        description
-      );
+      validateDescription(description);
 
     if (descriptionError) {
       return res.status(400).json({
@@ -139,11 +152,10 @@ exports.createShelf = async (
       });
     }
 
-    const shelves =
-      await Shelf.getShelves(
-        storeId,
-        warehouseId
-      );
+    const shelves = await Shelf.getShelves(
+      storeId,
+      warehouseId
+    );
 
     if (
       shelves.length >=
@@ -154,29 +166,25 @@ exports.createShelf = async (
           "Warehouse has reached its maximum shelf capacity",
         shelfCapacity:
           warehouse.shelfCapacity,
-        currentShelves:
-          shelves.length,
+        currentShelves: shelves.length,
         availableShelves: 0,
       });
     }
 
-    const shelf =
-      await Shelf.createShelf({
-        storeId,
-        warehouseId,
-
-        name: name.trim(),
-
-        description:
-          description !== undefined
-            ? description.trim()
-            : null,
-      });
+    const shelf = await Shelf.createShelf({
+      storeId,
+      warehouseId,
+      name: name.trim(),
+      description:
+        description !== undefined &&
+        description !== null
+          ? description.trim()
+          : null,
+    });
 
     return res.status(201).json({
       success: true,
-      message:
-        "Shelf created successfully",
+      message: "Shelf created successfully",
       shelf,
     });
   } catch (err) {
@@ -193,10 +201,7 @@ exports.createShelf = async (
   }
 };
 
-exports.getShelves = async (
-  req,
-  res
-) => {
+exports.getShelves = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -213,29 +218,25 @@ exports.getShelves = async (
 
     if (!warehouseId) {
       return res.status(400).json({
-        error:
-          "Warehouse ID is required",
+        error: "Warehouse ID is required",
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -243,27 +244,21 @@ exports.getShelves = async (
       });
     }
 
-    const shelves =
-      await Shelf.getShelves(
-        storeId,
-        warehouseId
-      );
+    const shelves = await Shelf.getShelves(
+      storeId,
+      warehouseId
+    );
 
     return res.status(200).json({
       success: true,
-
       count: shelves.length,
-
       shelfCapacity:
         warehouse.shelfCapacity,
-
-      availableShelves:
-        Math.max(
-          0,
-          warehouse.shelfCapacity -
-            shelves.length
-        ),
-
+      availableShelves: Math.max(
+        0,
+        warehouse.shelfCapacity -
+          shelves.length
+      ),
       shelves,
     });
   } catch (err) {
@@ -280,10 +275,7 @@ exports.getShelves = async (
   }
 };
 
-exports.getShelf = async (
-  req,
-  res
-) => {
+exports.getShelf = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -304,24 +296,21 @@ exports.getShelf = async (
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -329,12 +318,11 @@ exports.getShelf = async (
       });
     }
 
-    const shelf =
-      await Shelf.getShelf(
-        storeId,
-        warehouseId,
-        shelfId
-      );
+    const shelf = await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
 
     if (!shelf) {
       return res.status(404).json({
@@ -360,10 +348,7 @@ exports.getShelf = async (
   }
 };
 
-exports.updateShelf = async (
-  req,
-  res
-) => {
+exports.updateShelf = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -389,24 +374,21 @@ exports.updateShelf = async (
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -439,9 +421,7 @@ exports.updateShelf = async (
     }
 
     const descriptionError =
-      validateDescription(
-        description
-      );
+      validateDescription(description);
 
     if (descriptionError) {
       return res.status(400).json({
@@ -475,8 +455,7 @@ exports.updateShelf = async (
 
     return res.status(200).json({
       success: true,
-      message:
-        "Shelf updated successfully",
+      message: "Shelf updated successfully",
       shelf,
     });
   } catch (err) {
@@ -493,10 +472,7 @@ exports.updateShelf = async (
   }
 };
 
-exports.deleteShelf = async (
-  req,
-  res
-) => {
+exports.deleteShelf = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -517,24 +493,21 @@ exports.deleteShelf = async (
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -586,12 +559,8 @@ exports.getShelfOptions = async (
 ) => {
   return res.status(200).json({
     success: true,
-
-    maxSubShelves:
-      MAX_SUBSHELVES,
-
-    maxProducts:
-      MAX_PRODUCTS,
+    maxSubShelves: MAX_SUBSHELVES,
+    maxProducts: MAX_PRODUCTS,
   });
 };
 
@@ -609,8 +578,9 @@ exports.addProductToShelf = async (
     } = req.params;
 
     const {
-      name,
-      sku,
+      productId,
+      logo,
+      price,
       quantity,
     } = req.body;
 
@@ -625,31 +595,28 @@ exports.addProductToShelf = async (
       });
     }
 
-    if (
-      typeof name !== "string" ||
-      !name.trim()
-    ) {
+    const productIdError =
+      validateProductId(productId);
+
+    if (productIdError) {
       return res.status(400).json({
-        error: "Product name is required",
+        error: productIdError,
       });
     }
 
-    if (name.trim().length > 100) {
+    const logoError = validateLogo(logo);
+
+    if (logoError) {
       return res.status(400).json({
-        error:
-          "Product name cannot exceed 100 characters",
+        error: logoError,
       });
     }
 
-    if (
-      sku !== undefined &&
-      sku !== null &&
-      typeof sku !== "string" &&
-      typeof sku !== "number"
-    ) {
+    const priceError = validatePrice(price);
+
+    if (priceError) {
       return res.status(400).json({
-        error:
-          "SKU must be a string or number",
+        error: priceError,
       });
     }
 
@@ -665,24 +632,21 @@ exports.addProductToShelf = async (
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -690,12 +654,11 @@ exports.addProductToShelf = async (
       });
     }
 
-    const shelf =
-      await Shelf.getShelf(
-        storeId,
-        warehouseId,
-        shelfId
-      );
+    const shelf = await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
 
     if (!shelf) {
       return res.status(404).json({
@@ -725,13 +688,14 @@ exports.addProductToShelf = async (
           storeId,
           warehouseId,
           shelfId,
-          name: name.trim(),
-          sku:
-            sku !== undefined &&
-            sku !== null &&
-            String(sku).trim()
-              ? String(sku).trim()
+          productId:
+            String(productId).trim(),
+          logo:
+            logo !== undefined &&
+            logo !== null
+              ? String(logo).trim()
               : null,
+          price: Number(price),
           quantity: qty,
         });
     } catch (err) {
@@ -767,7 +731,183 @@ exports.addProductToShelf = async (
   }
 };
 
-// Subtract stock from a product on this shelf — e.g. when it's sold.
+exports.getShelfProducts = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID and shelf ID are required",
+      });
+    }
+
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
+
+    if (!store) {
+      return res.status(403).json({
+        error: "You do not have access to this store",
+      });
+    }
+
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
+
+    if (!warehouse) {
+      return res.status(404).json({
+        error: "Warehouse not found",
+      });
+    }
+
+    const shelf = await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
+
+    if (!shelf) {
+      return res.status(404).json({
+        error: "Shelf not found",
+      });
+    }
+
+    const products =
+      await Shelf.getShelfProducts(
+        storeId,
+        warehouseId,
+        shelfId
+      );
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      products,
+    });
+  } catch (err) {
+    console.error(
+      "Get shelf products error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get shelf products",
+    });
+  }
+};
+
+exports.getShelfProduct = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      storeId,
+      warehouseId,
+      shelfId,
+      productId,
+    } = req.params;
+
+    if (
+      !storeId ||
+      !warehouseId ||
+      !shelfId ||
+      !productId
+    ) {
+      return res.status(400).json({
+        error:
+          "Store ID, warehouse ID, shelf ID and product ID are required",
+      });
+    }
+
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
+
+    if (!store) {
+      return res.status(403).json({
+        error: "You do not have access to this store",
+      });
+    }
+
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
+
+    if (!warehouse) {
+      return res.status(404).json({
+        error: "Warehouse not found",
+      });
+    }
+
+    const shelf = await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
+
+    if (!shelf) {
+      return res.status(404).json({
+        error: "Shelf not found",
+      });
+    }
+
+    const product =
+      await Shelf.getShelfProduct(
+        storeId,
+        warehouseId,
+        shelfId,
+        productId
+      );
+
+    if (!product) {
+      return res.status(404).json({
+        error:
+          "Product not found on this shelf",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      product,
+    });
+  } catch (err) {
+    console.error(
+      "Get shelf product error:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        err.message ||
+        "Failed to get shelf product",
+    });
+  }
+};
+
 exports.sellProductFromShelf = async (
   req,
   res
@@ -806,24 +946,21 @@ exports.sellProductFromShelf = async (
       });
     }
 
-    const store =
-      await getStoreForUser(
-        userId,
-        storeId
-      );
+    const store = await getStoreForUser(
+      userId,
+      storeId
+    );
 
     if (!store) {
       return res.status(403).json({
-        error:
-          "You do not have access to this store",
+        error: "You do not have access to this store",
       });
     }
 
-    const warehouse =
-      await getWarehouse(
-        storeId,
-        warehouseId
-      );
+    const warehouse = await getWarehouse(
+      storeId,
+      warehouseId
+    );
 
     if (!warehouse) {
       return res.status(404).json({
@@ -831,12 +968,11 @@ exports.sellProductFromShelf = async (
       });
     }
 
-    const shelf =
-      await Shelf.getShelf(
-        storeId,
-        warehouseId,
-        shelfId
-      );
+    const shelf = await Shelf.getShelf(
+      storeId,
+      warehouseId,
+      shelfId
+    );
 
     if (!shelf) {
       return res.status(404).json({

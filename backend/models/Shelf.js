@@ -3,10 +3,7 @@ const { db } = require("../firebase/index.js");
 const MAX_SUBSHELVES = 10;
 const MAX_PRODUCTS = 1250;
 
-const getShelvesRef = (
-  storeId,
-  warehouseId
-) => {
+const getShelvesRef = (storeId, warehouseId) => {
   return db
     .collection("stores")
     .doc(String(storeId))
@@ -14,11 +11,8 @@ const getShelvesRef = (
     .doc(String(warehouseId))
     .collection("shelves");
 };
-const getProductsRef = (
-  storeId,
-  warehouseId,
-  shelfId
-) => {
+
+const getProductsRef = (storeId, warehouseId, shelfId) => {
   return db
     .collection("stores")
     .doc(String(storeId))
@@ -28,17 +22,14 @@ const getProductsRef = (
     .doc(String(shelfId))
     .collection("products");
 };
+
 exports.createShelf = async ({
   storeId,
   warehouseId,
   name,
   description,
 }) => {
-  const shelvesRef = getShelvesRef(
-    storeId,
-    warehouseId
-  );
-
+  const shelvesRef = getShelvesRef(storeId, warehouseId);
   const existing = await shelvesRef.get();
 
   const warehouseRef = db
@@ -55,31 +46,27 @@ exports.createShelf = async ({
 
   const warehouseData = warehouse.data();
 
-  if (existing.size >= warehouseData.shelfCapacity) {
+  if (existing.size >= Number(warehouseData.shelfCapacity || 0)) {
     throw new Error(
       "Warehouse has reached its maximum shelf capacity"
     );
   }
 
   const shelfRef = shelvesRef.doc();
+  const now = new Date();
 
   const shelf = {
     id: shelfRef.id,
-
     storeId: String(storeId),
     warehouseId: String(warehouseId),
-
     name,
     description: description || null,
-
     maxSubShelves: MAX_SUBSHELVES,
-
     productQuantity: 0,
     capacity: MAX_PRODUCTS,
     availableCapacity: MAX_PRODUCTS,
-
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
   };
 
   await shelfRef.set(shelf);
@@ -87,14 +74,8 @@ exports.createShelf = async ({
   return shelf;
 };
 
-exports.getShelves = async (
-  storeId,
-  warehouseId
-) => {
-  const snapshot = await getShelvesRef(
-    storeId,
-    warehouseId
-  )
+exports.getShelves = async (storeId, warehouseId) => {
+  const snapshot = await getShelvesRef(storeId, warehouseId)
     .orderBy("createdAt", "desc")
     .get();
 
@@ -130,10 +111,7 @@ exports.updateShelf = async (
   storeId,
   warehouseId,
   shelfId,
-  {
-    name,
-    description,
-  }
+  { name, description }
 ) => {
   const shelfRef = getShelvesRef(
     storeId,
@@ -197,6 +175,8 @@ exports.addProductToShelf = async ({
   shelfId,
   productId,
   quantity,
+  logo,
+  price,
 }) => {
   const shelfRef = getShelvesRef(
     storeId,
@@ -217,14 +197,8 @@ exports.addProductToShelf = async ({
     shelfId
   );
 
-  const productRef = productsRef.doc(
-    String(productId)
-  );
-
+  const productRef = productsRef.doc(String(productId));
   const existing = await productRef.get();
-
-  const currentQuantity =
-    shelfData.productQuantity || 0;
 
   const addQuantity = Number(quantity);
 
@@ -236,6 +210,20 @@ exports.addProductToShelf = async ({
       "Quantity must be a positive integer"
     );
   }
+
+  const productPrice = Number(price);
+
+  if (
+    !Number.isFinite(productPrice) ||
+    productPrice < 0
+  ) {
+    throw new Error(
+      "Price must be a valid non-negative number"
+    );
+  }
+
+  const currentQuantity =
+    Number(shelfData.productQuantity) || 0;
 
   const existingQuantity = existing.exists
     ? Number(existing.data().quantity || 0)
@@ -250,46 +238,75 @@ exports.addProductToShelf = async ({
     );
   }
 
+  const now = new Date();
+
   const product = {
     id: String(productId),
     productId: String(productId),
-
     storeId: String(storeId),
     warehouseId: String(warehouseId),
     shelfId: String(shelfId),
-
-    quantity:
-      existingQuantity + addQuantity,
-
+    logo: logo || null,
+    price: productPrice,
+    quantity: existingQuantity + addQuantity,
     createdAt: existing.exists
       ? existing.data().createdAt
-      : new Date(),
-
-    updatedAt: new Date(),
+      : now,
+    updatedAt: now,
   };
 
   await productRef.set(product);
 
   await shelfRef.update({
     productQuantity: newQuantity,
-    availableCapacity:
-      MAX_PRODUCTS - newQuantity,
-    updatedAt: new Date(),
+    availableCapacity: MAX_PRODUCTS - newQuantity,
+    updatedAt: now,
   });
 
   return product;
 };
 
-/**
- * Subtracts sold/removed stock from a product that lives directly
- * on a shelf (no sub-shelf/box). Keyed by productId to match
- * addProductToShelf's existing pattern.
- *
- * If the product's quantity hits 0, the product document is
- * deleted entirely.
- *
- * Returns { id, remainingQuantity, soldQuantity, deleted }.
- */
+exports.getShelfProducts = async (
+  storeId,
+  warehouseId,
+  shelfId
+) => {
+  const snapshot = await getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId
+  ).get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+};
+
+exports.getShelfProduct = async (
+  storeId,
+  warehouseId,
+  shelfId,
+  productId
+) => {
+  const productRef = getProductsRef(
+    storeId,
+    warehouseId,
+    shelfId
+  ).doc(String(productId));
+
+  const doc = await productRef.get();
+
+  if (!doc.exists) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    ...doc.data(),
+  };
+};
+
 exports.sellProductFromShelf = async ({
   storeId,
   warehouseId,
@@ -308,42 +325,61 @@ exports.sellProductFromShelf = async ({
     shelfId
   );
 
-  const productRef = productsRef.doc(
-    String(productId)
-  );
+  const productRef = productsRef.doc(String(productId));
+
+  const sellQuantity = Number(quantity);
+
+  if (
+    !Number.isInteger(sellQuantity) ||
+    sellQuantity <= 0
+  ) {
+    throw new Error(
+      "Quantity must be a positive integer"
+    );
+  }
 
   return await db.runTransaction(async (transaction) => {
-    const productDoc = await transaction.get(productRef);
+    const productDoc =
+      await transaction.get(productRef);
 
     if (!productDoc.exists) {
-      throw new Error("Product not found on this shelf");
+      throw new Error(
+        "Product not found on this shelf"
+      );
     }
 
-    const shelfDoc = await transaction.get(shelfRef);
+    const shelfDoc =
+      await transaction.get(shelfRef);
 
     if (!shelfDoc.exists) {
       throw new Error("Shelf not found");
     }
 
     const productData = productDoc.data();
-    const currentProductQuantity =
-      productData.quantity || 0;
 
-    if (quantity > currentProductQuantity) {
+    const currentProductQuantity =
+      Number(productData.quantity) || 0;
+
+    if (sellQuantity > currentProductQuantity) {
       throw new Error(
         `Only ${currentProductQuantity} unit(s) of this product available to sell`
       );
     }
 
     const newProductQuantity =
-      currentProductQuantity - quantity;
+      currentProductQuantity - sellQuantity;
 
     const shelfData = shelfDoc.data();
+
     const shelfCapacity =
-      shelfData.capacity || MAX_PRODUCTS;
+      Number(shelfData.capacity) || MAX_PRODUCTS;
+
+    const currentShelfQuantity =
+      Number(shelfData.productQuantity) || 0;
+
     const newShelfQuantity = Math.max(
       0,
-      (shelfData.productQuantity || 0) - quantity
+      currentShelfQuantity - sellQuantity
     );
 
     const now = new Date();
@@ -359,14 +395,15 @@ exports.sellProductFromShelf = async ({
 
     transaction.update(shelfRef, {
       productQuantity: newShelfQuantity,
-      availableCapacity: shelfCapacity - newShelfQuantity,
+      availableCapacity:
+        shelfCapacity - newShelfQuantity,
       updatedAt: now,
     });
 
     return {
       id: productRef.id,
       remainingQuantity: newProductQuantity,
-      soldQuantity: quantity,
+      soldQuantity: sellQuantity,
       deleted: newProductQuantity === 0,
     };
   });

@@ -2,16 +2,12 @@ export interface Shelf {
   id: string;
   storeId: string;
   warehouseId: string;
-
   name: string;
   description: string | null;
-
   maxSubShelves: number;
-
   productQuantity: number;
   capacity: number;
   availableCapacity: number;
-
   createdAt: string;
   updatedAt: string;
 }
@@ -37,13 +33,16 @@ export interface ShelfProduct {
   storeId: string;
   warehouseId: string;
   shelfId: string;
+  logo: string | null;
+  price: number;
   quantity: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AddProductToShelfPayload {
-  name: string;
-  sku?: string;
+  productId: string;
+  logo?: string;
+  price: number;
   quantity: number;
 }
