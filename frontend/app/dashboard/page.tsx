@@ -91,9 +91,7 @@ export default function DashboardPage() {
   const [addQuantity, setAddQuantity] = useState("");
   const [adding, setAdding] = useState(false);
 
-  /*
-   * GET STORE
-   */
+ 
   useEffect(() => {
     getMyStores()
       .then(({ stores }) => {
