@@ -51,7 +51,7 @@ export function deleteBox(
   );
 }
 
-export function addBoxProduct(
+export function addProductToBox(
   storeId: string,
   warehouseId: string,
   shelfId: string,

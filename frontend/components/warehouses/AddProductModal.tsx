@@ -17,8 +17,9 @@ export function AddProductModal({
   onClose,
   onAdd,
 }: AddProductModalProps) {
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
+  const [productId, setProductId] = useState("");
+  const [logo, setLogo] = useState("");
+  const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,8 +36,18 @@ export function AddProductModal({
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
-      setError("Product name is required");
+    if (!productId.trim()) {
+      setError("Product ID is required");
+      return;
+    }
+
+    const productPrice = Number(price);
+    if (
+      price.trim() === "" ||
+      !Number.isFinite(productPrice) ||
+      productPrice < 0
+    ) {
+      setError("Price must be a valid non-negative number");
       return;
     }
 
@@ -58,8 +69,9 @@ export function AddProductModal({
     setSubmitting(true);
     try {
       await onAdd({
-        name: name.trim(),
-        sku: sku.trim() ? sku.trim() : undefined,
+        productId: productId.trim(),
+        logo: logo.trim() ? logo.trim() : undefined,
+        price: productPrice,
         quantity: qty,
       });
     } catch (err) {
@@ -91,31 +103,47 @@ export function AddProductModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="product-name">
-              Product name
+            <label className="eyebrow text-ink/60" htmlFor="product-id">
+              Product ID
             </label>
             <input
-              id="product-name"
+              id="product-id"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
               className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              placeholder="e.g. Blue Widget"
+              placeholder="e.g. PROD-1042"
               autoFocus
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="product-sku">
-              SKU / Product ID <span className="text-ink/30">(optional)</span>
+            <label className="eyebrow text-ink/60" htmlFor="product-logo">
+              Logo URL <span className="text-ink/30">(optional)</span>
             </label>
             <input
-              id="product-sku"
-              type="text"
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
+              id="product-logo"
+              type="url"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
               className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-              placeholder="e.g. SKU-1042"
+              placeholder="https://example.com/logo.png"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="eyebrow text-ink/60" htmlFor="product-price">
+              Price
+            </label>
+            <input
+              id="product-price"
+              type="number"
+              min={0}
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              placeholder="e.g. 49.99"
             />
           </div>
 

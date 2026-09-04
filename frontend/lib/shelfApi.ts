@@ -153,13 +153,14 @@ export const shelfApi = {
       {
         method: "POST",
         body: {
-          name: payload.name.trim(),
-          sku:
-            payload.sku !== undefined &&
-            payload.sku !== null &&
-            String(payload.sku).trim()
-              ? String(payload.sku).trim()
+          productId: String(payload.productId).trim(),
+          logo:
+            payload.logo !== undefined &&
+            payload.logo !== null &&
+            String(payload.logo).trim()
+              ? String(payload.logo).trim()
               : null,
+          price: Number(payload.price),
           quantity: Number(payload.quantity),
         },
       }
