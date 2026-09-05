@@ -9,7 +9,7 @@ import {
 } from "@/lib/sellApi";
 import { getSales, recordSale, Sale } from "@/lib/salesApi";
 import { sellProductFromShelf } from "@/lib/shelfApi";
-import { sellSubShelfProduct } from "@/lib/subshelfApi";
+import { sellSubShelfProduct } from "@/lib/subshelf";
 import { sellBoxProduct } from "@/lib/box";
 
 function formatMoney(n: number) {
