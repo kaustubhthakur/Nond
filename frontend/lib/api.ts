@@ -10,11 +10,10 @@ import {
   VerifyOtpResponse,
 } from "@/types/auth";
 
-const AUTH_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/auth";
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
+
+const AUTH_API_URL = `${API_BASE_URL}/auth`;
 
 async function request<T>(path: string, body: unknown): Promise<T> {
   let res: Response;

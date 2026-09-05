@@ -14,7 +14,6 @@ function basePath(
 ) {
   return `/box/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/sub-shelf/${subShelfId}`;
 }
-
 interface BoxResponse {
   success: boolean;
   message?: string;
@@ -176,3 +175,4 @@ export function sellBoxProduct(
     }
   );
 }
+export const addBoxProduct = addProductToBox;
