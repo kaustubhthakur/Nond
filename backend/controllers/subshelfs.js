@@ -55,6 +55,8 @@ const validateDescription = (
 const validateProductInput = (
   name,
   sku,
+  logo,
+  price,
   quantity
 ) => {
   if (
@@ -75,6 +77,24 @@ const validateProductInput = (
     typeof sku !== "number"
   ) {
     return "SKU must be a string or number";
+  }
+
+  if (
+    logo !== undefined &&
+    logo !== null &&
+    typeof logo !== "string"
+  ) {
+    return "Logo must be a string";
+  }
+
+  if (
+    price === undefined ||
+    price === null ||
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price < 0
+  ) {
+    return "Price must be a non-negative number";
   }
 
   if (
@@ -236,9 +256,7 @@ exports.createSubShelf = async (
         storeId,
         warehouseId,
         shelfId,
-
         name: name.trim(),
-
         description:
           description !== undefined
             ? description.trim()
@@ -326,23 +344,17 @@ exports.getSubShelves = async (
 
     return res.status(200).json({
       success: true,
-
       count: subShelves.length,
-
       maxSubShelves: 10,
-
       availableSubShelves:
         Math.max(
           0,
           10 - subShelves.length
         ),
-
       maxBoxesPerSubShelf:
         MAX_BOXES,
-
       maxProductsPerSubShelf:
         MAX_PRODUCTS,
-
       subShelves,
     });
   } catch (err) {
@@ -697,6 +709,8 @@ exports.addProduct = async (
     const {
       name,
       sku,
+      logo,
+      price,
       quantity,
     } = req.body;
 
@@ -758,6 +772,8 @@ exports.addProduct = async (
       validateProductInput(
         name,
         sku,
+        logo,
+        price,
         quantity
       );
 
@@ -792,16 +808,24 @@ exports.addProduct = async (
           subShelfId,
           {
             name: name.trim(),
+
             sku:
               sku !== undefined &&
               sku !== null
                 ? String(sku).trim()
                 : null,
+
+            logo:
+              logo !== undefined &&
+              logo !== null
+                ? String(logo).trim()
+                : null,
+
+            price,
             quantity,
           }
         );
     } catch (err) {
-      // Transaction rejected it, most likely a capacity race.
       return res.status(409).json({
         error: err.message,
       });

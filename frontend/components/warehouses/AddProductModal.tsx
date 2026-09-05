@@ -28,7 +28,9 @@ export function AddProductModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     window.addEventListener("keydown", onKeyDown);
+
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
@@ -42,6 +44,7 @@ export function AddProductModal({
     }
 
     const productPrice = Number(price);
+
     if (
       price.trim() === "" ||
       !Number.isFinite(productPrice) ||
@@ -52,6 +55,7 @@ export function AddProductModal({
     }
 
     const qty = Number(quantity);
+
     if (!Number.isInteger(qty) || qty <= 0) {
       setError("Quantity must be a positive whole number");
       return;
@@ -67,9 +71,10 @@ export function AddProductModal({
     }
 
     setSubmitting(true);
+
     try {
       await onAdd({
-        productId: productId.trim(),
+        name: productId.trim(),
         logo: logo.trim() ? logo.trim() : undefined,
         price: productPrice,
         quantity: qty,
@@ -81,6 +86,7 @@ export function AddProductModal({
       setSubmitting(false);
       return;
     }
+
     setSubmitting(false);
   };
 
@@ -91,6 +97,7 @@ export function AddProductModal({
           <h2 className="font-display italic text-xl text-ink">
             Add product to {shelfName}
           </h2>
+
           <button
             type="button"
             onClick={onClose}
@@ -106,6 +113,7 @@ export function AddProductModal({
             <label className="eyebrow text-ink/60" htmlFor="product-id">
               Product ID
             </label>
+
             <input
               id="product-id"
               type="text"
@@ -121,6 +129,7 @@ export function AddProductModal({
             <label className="eyebrow text-ink/60" htmlFor="product-logo">
               Logo URL <span className="text-ink/30">(optional)</span>
             </label>
+
             <input
               id="product-logo"
               type="url"
@@ -135,6 +144,7 @@ export function AddProductModal({
             <label className="eyebrow text-ink/60" htmlFor="product-price">
               Price
             </label>
+
             <input
               id="product-price"
               type="number"
@@ -151,6 +161,7 @@ export function AddProductModal({
             <label className="eyebrow text-ink/60" htmlFor="product-qty">
               Quantity
             </label>
+
             <input
               id="product-qty"
               type="number"
@@ -160,6 +171,7 @@ export function AddProductModal({
               onChange={(e) => setQuantity(e.target.value)}
               className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
             />
+
             <p className="text-xs text-ink/40">
               {availableCapacity.toLocaleString()} unit
               {availableCapacity === 1 ? "" : "s"} of space left on this shelf
@@ -177,6 +189,7 @@ export function AddProductModal({
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={submitting || availableCapacity <= 0}

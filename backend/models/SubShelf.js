@@ -211,6 +211,7 @@ exports.deleteSubShelf = async (
     shelfId,
     subShelfId
   );
+
   const shelfRef = getShelfRef(
     storeId,
     warehouseId,
@@ -233,6 +234,7 @@ exports.deleteSubShelf = async (
       if (shelfDoc.exists) {
         const shelfData = shelfDoc.data();
         const shelfCapacity = shelfData.capacity || 0;
+
         const newShelfQuantity = Math.max(
           0,
           (shelfData.productQuantity || 0) - reclaimedQuantity
@@ -267,7 +269,7 @@ exports.addProduct = async (
   warehouseId,
   shelfId,
   subShelfId,
-  { name, sku, quantity }
+  { name, sku, logo, price, quantity }
 ) => {
   const subShelfRef = getSubShelfRef(
     storeId,
@@ -341,6 +343,8 @@ exports.addProduct = async (
 
       name,
       sku: sku || null,
+      logo: logo || null,
+      price: price ?? 0,
       quantity,
 
       createdAt: now,
@@ -389,11 +393,13 @@ exports.sellProduct = async (
     shelfId,
     subShelfId
   );
+
   const shelfRef = getShelfRef(
     storeId,
     warehouseId,
     shelfId
   );
+
   const productRef = getProductsRef(
     storeId,
     warehouseId,
@@ -434,6 +440,7 @@ exports.sellProduct = async (
 
     const subShelfData = subShelfDoc.data();
     const subShelfCapacity = subShelfData.capacity || 0;
+
     const newSubShelfQuantity = Math.max(
       0,
       (subShelfData.productQuantity || 0) - quantity
@@ -441,6 +448,7 @@ exports.sellProduct = async (
 
     const shelfData = shelfDoc.data();
     const shelfCapacity = shelfData.capacity || 0;
+
     const newShelfQuantity = Math.max(
       0,
       (shelfData.productQuantity || 0) - quantity

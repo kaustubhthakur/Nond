@@ -5,8 +5,8 @@ import type {
   SubShelfProduct,
 } from "@/types/subshelf";
 
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -33,7 +33,11 @@ interface SubShelfResponse {
   subShelf: SubShelf;
 }
 
-export function getSubShelves(storeId: string, warehouseId: string, shelfId: string) {
+export function getSubShelves(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string
+) {
   return request<GetSubShelvesResponse>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}`
   );
@@ -58,7 +62,10 @@ export function createSubShelf(
 ) {
   return request<SubShelfResponse>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}`,
-    { method: "POST", body: JSON.stringify(payload) }
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
   );
 }
 
@@ -71,7 +78,10 @@ export function updateSubShelf(
 ) {
   return request<SubShelfResponse>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}`,
-    { method: "PUT", body: JSON.stringify(payload) }
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
   );
 }
 
@@ -83,7 +93,9 @@ export function deleteSubShelf(
 ) {
   return request<{ success: boolean; message: string }>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}`,
-    { method: "DELETE" }
+    {
+      method: "DELETE",
+    }
   );
 }
 
@@ -92,11 +104,24 @@ export function addProductToSubShelf(
   warehouseId: string,
   shelfId: string,
   subShelfId: string,
-  payload: { name: string; sku?: string; quantity: number }
+  payload: {
+    name: string;
+    sku?: string;
+    logo?: string;
+    price: number;
+    quantity: number;
+  }
 ) {
-  return request<{ success: boolean; message: string; product: SubShelfProduct }>(
+  return request<{
+    success: boolean;
+    message: string;
+    product: SubShelfProduct;
+  }>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products`,
-    { method: "POST", body: JSON.stringify(payload) }
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
   );
 }
 
@@ -110,6 +135,7 @@ export function getSubShelfProducts(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products`
   );
 }
+
 export function sellSubShelfProduct(
   storeId: string,
   warehouseId: string,
@@ -125,7 +151,11 @@ export function sellSubShelfProduct(
     remainingQuantity?: number;
   }>(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products/${productId}/sell`,
-    { method: "POST", body: JSON.stringify({ quantity }) }
+    {
+      method: "POST",
+      body: JSON.stringify({ quantity }),
+    }
   );
 }
+
 export const addSubShelfProduct = addProductToSubShelf;

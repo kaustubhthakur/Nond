@@ -22,6 +22,8 @@ export interface SubShelfProduct {
   subShelfId: string;
   name: string;
   sku: string | null;
+  logo: string | null;
+  price: number;
   quantity: number;
   createdAt: string;
   updatedAt: string;
