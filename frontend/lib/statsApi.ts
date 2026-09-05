@@ -1,5 +1,5 @@
 import { ApiError, ApiErrorBody } from "@/types/auth";
-import type { TopSellingSlice } from "@/types/dashboardStats";
+import type { DashboardStats } from "@/types/dashboardStats";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
@@ -45,11 +45,8 @@ async function request<T>(
 }
 
 export const statsApi = {
-  getTopSelling: (storeId: string) =>
-    request<{
-      success: true;
-      slices: TopSellingSlice[];
-    }>(`/store/${storeId}/top-selling`),
+  getDashboardStats: (storeId: string) =>
+    request<{ success: true } & DashboardStats>(`/store/${storeId}`),
 };
 
-export const getTopSellingDevices = statsApi.getTopSelling;
+export const getDashboardStats = statsApi.getDashboardStats;
