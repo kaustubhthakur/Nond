@@ -688,9 +688,17 @@ exports.getBoxOptions = async (
 };
 
 
+/*
+|--------------------------------------------------------------------------
+| Product Validation
+|--------------------------------------------------------------------------
+*/
+
 const validateProductInput = (
   name,
   sku,
+  logo,
+  price,
   quantity
 ) => {
   if (
@@ -714,6 +722,24 @@ const validateProductInput = (
   }
 
   if (
+    logo !== undefined &&
+    logo !== null &&
+    typeof logo !== "string"
+  ) {
+    return "Logo must be a string";
+  }
+
+  if (
+    price === undefined ||
+    price === null ||
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price < 0
+  ) {
+    return "Price must be a non-negative number";
+  }
+
+  if (
     quantity === undefined ||
     quantity === null ||
     typeof quantity !== "number" ||
@@ -725,6 +751,13 @@ const validateProductInput = (
 
   return null;
 };
+
+
+/*
+|--------------------------------------------------------------------------
+| Add Product To Box
+|--------------------------------------------------------------------------
+*/
 
 exports.addProduct = async (
   req,
@@ -744,6 +777,8 @@ exports.addProduct = async (
     const {
       name,
       sku,
+      logo,
+      price,
       quantity,
     } = req.body;
 
@@ -808,6 +843,8 @@ exports.addProduct = async (
       validateProductInput(
         name,
         sku,
+        logo,
+        price,
         quantity
       );
 
@@ -818,13 +855,15 @@ exports.addProduct = async (
     }
 
     const availableSpace =
-      box.capacity - box.productQuantity;
+      box.capacity -
+      box.productQuantity;
 
     if (quantity > availableSpace) {
       return res.status(409).json({
         error: `Box only has ${availableSpace} unit(s) of space left`,
         capacity: box.capacity,
-        currentQuantity: box.productQuantity,
+        currentQuantity:
+          box.productQuantity,
         availableSpace,
       });
     }
@@ -832,24 +871,34 @@ exports.addProduct = async (
     let product;
 
     try {
-      product = await Box.addProduct(
-        storeId,
-        warehouseId,
-        shelfId,
-        subShelfId,
-        boxId,
-        {
-          name: name.trim(),
-          sku:
-            sku !== undefined &&
-            sku !== null
-              ? String(sku).trim()
-              : null,
-          quantity,
-        }
-      );
+      product =
+        await Box.addProduct(
+          storeId,
+          warehouseId,
+          shelfId,
+          subShelfId,
+          boxId,
+          {
+            name: name.trim(),
+
+            sku:
+              sku !== undefined &&
+              sku !== null
+                ? String(sku).trim()
+                : null,
+
+            logo:
+              logo !== undefined &&
+              logo !== null
+                ? String(logo).trim()
+                : null,
+
+            price,
+
+            quantity,
+          }
+        );
     } catch (err) {
-   
       return res.status(409).json({
         error: err.message,
       });
@@ -863,7 +912,8 @@ exports.addProduct = async (
 
     return res.status(201).json({
       success: true,
-      message: "Product added to box successfully",
+      message:
+        "Product added to box successfully",
       product,
     });
   } catch (err) {
@@ -880,7 +930,13 @@ exports.addProduct = async (
   }
 };
 
-// Subtract stock from a product in this box — e.g. when it's sold.
+
+/*
+|--------------------------------------------------------------------------
+| Sell Product
+|--------------------------------------------------------------------------
+*/
+
 exports.sellProduct = async (
   req,
   res
@@ -972,15 +1028,16 @@ exports.sellProduct = async (
     let result;
 
     try {
-      result = await Box.sellProduct(
-        storeId,
-        warehouseId,
-        shelfId,
-        subShelfId,
-        boxId,
-        productId,
-        qty
-      );
+      result =
+        await Box.sellProduct(
+          storeId,
+          warehouseId,
+          shelfId,
+          subShelfId,
+          boxId,
+          productId,
+          qty
+        );
     } catch (err) {
       return res.status(409).json({
         error: err.message,
@@ -1007,6 +1064,13 @@ exports.sellProduct = async (
     });
   }
 };
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Box Products
+|--------------------------------------------------------------------------
+*/
 
 exports.getBoxProducts = async (
   req,
@@ -1093,7 +1157,8 @@ exports.getBoxProducts = async (
       success: true,
       count: products.length,
       capacity: box.capacity,
-      productQuantity: box.productQuantity,
+      productQuantity:
+        box.productQuantity,
       products,
     });
   } catch (err) {

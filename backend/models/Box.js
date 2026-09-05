@@ -133,6 +133,7 @@ exports.createBox = async ({
 
   return box;
 };
+
 exports.getBoxes = async (
   storeId,
   warehouseId,
@@ -226,7 +227,6 @@ exports.updateBox = async (
   };
 };
 
-
 exports.deleteBox = async (
   storeId,
   warehouseId,
@@ -241,12 +241,14 @@ exports.deleteBox = async (
     subShelfId,
     boxId
   );
+
   const subShelfRef = getSubShelfRef(
     storeId,
     warehouseId,
     shelfId,
     subShelfId
   );
+
   const shelfRef = getShelfRef(
     storeId,
     warehouseId,
@@ -260,39 +262,60 @@ exports.deleteBox = async (
   }
 
   const boxData = doc.data();
-  const reclaimedQuantity = boxData.productQuantity || 0;
+  const reclaimedQuantity =
+    boxData.productQuantity || 0;
 
   if (reclaimedQuantity > 0) {
     await db.runTransaction(async (transaction) => {
-      const subShelfDoc = await transaction.get(subShelfRef);
-      const shelfDoc = await transaction.get(shelfRef);
+      const subShelfDoc =
+        await transaction.get(subShelfRef);
+
+      const shelfDoc =
+        await transaction.get(shelfRef);
 
       if (subShelfDoc.exists) {
-        const subShelfData = subShelfDoc.data();
-        const subShelfCapacity = subShelfData.capacity || 0;
-        const newSubShelfQuantity = Math.max(
-          0,
-          (subShelfData.productQuantity || 0) - reclaimedQuantity
-        );
+        const subShelfData =
+          subShelfDoc.data();
+
+        const subShelfCapacity =
+          subShelfData.capacity || 0;
+
+        const newSubShelfQuantity =
+          Math.max(
+            0,
+            (subShelfData.productQuantity || 0) -
+              reclaimedQuantity
+          );
 
         transaction.update(subShelfRef, {
-          productQuantity: newSubShelfQuantity,
-          availableCapacity: subShelfCapacity - newSubShelfQuantity,
+          productQuantity:
+            newSubShelfQuantity,
+          availableCapacity:
+            subShelfCapacity -
+            newSubShelfQuantity,
           updatedAt: new Date(),
         });
       }
 
       if (shelfDoc.exists) {
         const shelfData = shelfDoc.data();
-        const shelfCapacity = shelfData.capacity || 0;
-        const newShelfQuantity = Math.max(
-          0,
-          (shelfData.productQuantity || 0) - reclaimedQuantity
-        );
+
+        const shelfCapacity =
+          shelfData.capacity || 0;
+
+        const newShelfQuantity =
+          Math.max(
+            0,
+            (shelfData.productQuantity || 0) -
+              reclaimedQuantity
+          );
 
         transaction.update(shelfRef, {
-          productQuantity: newShelfQuantity,
-          availableCapacity: shelfCapacity - newShelfQuantity,
+          productQuantity:
+            newShelfQuantity,
+          availableCapacity:
+            shelfCapacity -
+            newShelfQuantity,
           updatedAt: new Date(),
         });
       }
@@ -306,14 +329,19 @@ exports.deleteBox = async (
   };
 };
 
-
 exports.addProduct = async (
   storeId,
   warehouseId,
   shelfId,
   subShelfId,
   boxId,
-  { name, sku, quantity }
+  {
+    name,
+    sku,
+    logo,
+    price,
+    quantity,
+  }
 ) => {
   const boxRef = getBoxRef(
     storeId,
@@ -322,12 +350,14 @@ exports.addProduct = async (
     subShelfId,
     boxId
   );
+
   const subShelfRef = getSubShelfRef(
     storeId,
     warehouseId,
     shelfId,
     subShelfId
   );
+
   const shelfRef = getShelfRef(
     storeId,
     warehouseId,
@@ -343,28 +373,40 @@ exports.addProduct = async (
   ).doc();
 
   return await db.runTransaction(async (transaction) => {
-    const boxDoc = await transaction.get(boxRef);
+    const boxDoc =
+      await transaction.get(boxRef);
 
     if (!boxDoc.exists) {
       return null;
     }
 
-    const subShelfDoc = await transaction.get(subShelfRef);
+    const subShelfDoc =
+      await transaction.get(subShelfRef);
 
     if (!subShelfDoc.exists) {
-      throw new Error("Parent sub-shelf not found");
+      throw new Error(
+        "Parent sub-shelf not found"
+      );
     }
 
-    const shelfDoc = await transaction.get(shelfRef);
+    const shelfDoc =
+      await transaction.get(shelfRef);
 
     if (!shelfDoc.exists) {
-      throw new Error("Parent shelf not found");
+      throw new Error(
+        "Parent shelf not found"
+      );
     }
 
     const boxData = boxDoc.data();
-    const boxCurrentQuantity = boxData.productQuantity || 0;
-    const boxCapacity = boxData.capacity || MAX_PRODUCTS;
-    const newBoxQuantity = boxCurrentQuantity + quantity;
+    const boxCurrentQuantity =
+      boxData.productQuantity || 0;
+
+    const boxCapacity =
+      boxData.capacity || MAX_PRODUCTS;
+
+    const newBoxQuantity =
+      boxCurrentQuantity + quantity;
 
     if (newBoxQuantity > boxCapacity) {
       throw new Error(
@@ -374,28 +416,44 @@ exports.addProduct = async (
       );
     }
 
-    const subShelfData = subShelfDoc.data();
-    const subShelfCapacity = subShelfData.capacity || 0;
-    const subShelfCurrentQuantity = subShelfData.productQuantity || 0;
-    const newSubShelfQuantity = subShelfCurrentQuantity + quantity;
+    const subShelfData =
+      subShelfDoc.data();
+
+    const subShelfCapacity =
+      subShelfData.capacity || 0;
+
+    const subShelfCurrentQuantity =
+      subShelfData.productQuantity || 0;
+
+    const newSubShelfQuantity =
+      subShelfCurrentQuantity + quantity;
 
     if (newSubShelfQuantity > subShelfCapacity) {
       throw new Error(
         `Sub-shelf only has ${
-          subShelfCapacity - subShelfCurrentQuantity
+          subShelfCapacity -
+          subShelfCurrentQuantity
         } unit(s) of space left overall`
       );
     }
 
-    const shelfData = shelfDoc.data();
-    const shelfCapacity = shelfData.capacity || 0;
-    const shelfCurrentQuantity = shelfData.productQuantity || 0;
-    const newShelfQuantity = shelfCurrentQuantity + quantity;
+    const shelfData =
+      shelfDoc.data();
+
+    const shelfCapacity =
+      shelfData.capacity || 0;
+
+    const shelfCurrentQuantity =
+      shelfData.productQuantity || 0;
+
+    const newShelfQuantity =
+      shelfCurrentQuantity + quantity;
 
     if (newShelfQuantity > shelfCapacity) {
       throw new Error(
         `Shelf only has ${
-          shelfCapacity - shelfCurrentQuantity
+          shelfCapacity -
+          shelfCurrentQuantity
         } unit(s) of space left overall`
       );
     }
@@ -413,29 +471,42 @@ exports.addProduct = async (
 
       name,
       sku: sku || null,
+      logo: logo || null,
+      price: price ?? 0,
       quantity,
 
       createdAt: now,
       updatedAt: now,
     };
 
-    transaction.set(productRef, product);
+    transaction.set(
+      productRef,
+      product
+    );
 
     transaction.update(boxRef, {
-      productQuantity: newBoxQuantity,
-      availableCapacity: boxCapacity - newBoxQuantity,
+      productQuantity:
+        newBoxQuantity,
+      availableCapacity:
+        boxCapacity - newBoxQuantity,
       updatedAt: now,
     });
 
     transaction.update(subShelfRef, {
-      productQuantity: newSubShelfQuantity,
-      availableCapacity: subShelfCapacity - newSubShelfQuantity,
+      productQuantity:
+        newSubShelfQuantity,
+      availableCapacity:
+        subShelfCapacity -
+        newSubShelfQuantity,
       updatedAt: now,
     });
 
     transaction.update(shelfRef, {
-      productQuantity: newShelfQuantity,
-      availableCapacity: shelfCapacity - newShelfQuantity,
+      productQuantity:
+        newShelfQuantity,
+      availableCapacity:
+        shelfCapacity -
+        newShelfQuantity,
       updatedAt: now,
     });
 
@@ -443,17 +514,6 @@ exports.addProduct = async (
   });
 };
 
-/**
- * Subtracts sold/removed stock from a product inside a box.
- * Runs in a transaction so concurrent sells can't push quantity
- * negative, and rolls the same amount back off the parent
- * sub-shelf and shelf aggregates in the same transaction.
- *
- * If the product's quantity hits 0, the product document is
- * deleted entirely (nothing left to track).
- *
- * Returns { id, remainingQuantity, soldQuantity, deleted }.
- */
 exports.sellProduct = async (
   storeId,
   warehouseId,
@@ -470,17 +530,20 @@ exports.sellProduct = async (
     subShelfId,
     boxId
   );
+
   const subShelfRef = getSubShelfRef(
     storeId,
     warehouseId,
     shelfId,
     subShelfId
   );
+
   const shelfRef = getShelfRef(
     storeId,
     warehouseId,
     shelfId
   );
+
   const productRef = getProductsRef(
     storeId,
     warehouseId,
@@ -490,32 +553,45 @@ exports.sellProduct = async (
   ).doc(String(productId));
 
   return await db.runTransaction(async (transaction) => {
-    const productDoc = await transaction.get(productRef);
+    const productDoc =
+      await transaction.get(productRef);
 
     if (!productDoc.exists) {
-      throw new Error("Product not found in this box");
+      throw new Error(
+        "Product not found in this box"
+      );
     }
 
-    const boxDoc = await transaction.get(boxRef);
+    const boxDoc =
+      await transaction.get(boxRef);
 
     if (!boxDoc.exists) {
       throw new Error("Box not found");
     }
 
-    const subShelfDoc = await transaction.get(subShelfRef);
+    const subShelfDoc =
+      await transaction.get(subShelfRef);
 
     if (!subShelfDoc.exists) {
-      throw new Error("Parent sub-shelf not found");
+      throw new Error(
+        "Parent sub-shelf not found"
+      );
     }
 
-    const shelfDoc = await transaction.get(shelfRef);
+    const shelfDoc =
+      await transaction.get(shelfRef);
 
     if (!shelfDoc.exists) {
-      throw new Error("Parent shelf not found");
+      throw new Error(
+        "Parent shelf not found"
+      );
     }
 
-    const productData = productDoc.data();
-    const currentProductQuantity = productData.quantity || 0;
+    const productData =
+      productDoc.data();
+
+    const currentProductQuantity =
+      productData.quantity || 0;
 
     if (quantity > currentProductQuantity) {
       throw new Error(
@@ -526,26 +602,44 @@ exports.sellProduct = async (
     const newProductQuantity =
       currentProductQuantity - quantity;
 
-    const boxData = boxDoc.data();
-    const boxCapacity = boxData.capacity || MAX_PRODUCTS;
-    const newBoxQuantity = Math.max(
-      0,
-      (boxData.productQuantity || 0) - quantity
-    );
+    const boxData =
+      boxDoc.data();
 
-    const subShelfData = subShelfDoc.data();
-    const subShelfCapacity = subShelfData.capacity || 0;
-    const newSubShelfQuantity = Math.max(
-      0,
-      (subShelfData.productQuantity || 0) - quantity
-    );
+    const boxCapacity =
+      boxData.capacity || MAX_PRODUCTS;
 
-    const shelfData = shelfDoc.data();
-    const shelfCapacity = shelfData.capacity || 0;
-    const newShelfQuantity = Math.max(
-      0,
-      (shelfData.productQuantity || 0) - quantity
-    );
+    const newBoxQuantity =
+      Math.max(
+        0,
+        (boxData.productQuantity || 0) -
+          quantity
+      );
+
+    const subShelfData =
+      subShelfDoc.data();
+
+    const subShelfCapacity =
+      subShelfData.capacity || 0;
+
+    const newSubShelfQuantity =
+      Math.max(
+        0,
+        (subShelfData.productQuantity || 0) -
+          quantity
+      );
+
+    const shelfData =
+      shelfDoc.data();
+
+    const shelfCapacity =
+      shelfData.capacity || 0;
+
+    const newShelfQuantity =
+      Math.max(
+        0,
+        (shelfData.productQuantity || 0) -
+          quantity
+      );
 
     const now = new Date();
 
@@ -559,28 +653,38 @@ exports.sellProduct = async (
     }
 
     transaction.update(boxRef, {
-      productQuantity: newBoxQuantity,
-      availableCapacity: boxCapacity - newBoxQuantity,
+      productQuantity:
+        newBoxQuantity,
+      availableCapacity:
+        boxCapacity - newBoxQuantity,
       updatedAt: now,
     });
 
     transaction.update(subShelfRef, {
-      productQuantity: newSubShelfQuantity,
-      availableCapacity: subShelfCapacity - newSubShelfQuantity,
+      productQuantity:
+        newSubShelfQuantity,
+      availableCapacity:
+        subShelfCapacity -
+        newSubShelfQuantity,
       updatedAt: now,
     });
 
     transaction.update(shelfRef, {
-      productQuantity: newShelfQuantity,
-      availableCapacity: shelfCapacity - newShelfQuantity,
+      productQuantity:
+        newShelfQuantity,
+      availableCapacity:
+        shelfCapacity -
+        newShelfQuantity,
       updatedAt: now,
     });
 
     return {
       id: productRef.id,
-      remainingQuantity: newProductQuantity,
+      remainingQuantity:
+        newProductQuantity,
       soldQuantity: quantity,
-      deleted: newProductQuantity === 0,
+      deleted:
+        newProductQuantity === 0,
     };
   });
 };
@@ -592,15 +696,16 @@ exports.getProducts = async (
   subShelfId,
   boxId
 ) => {
-  const snapshot = await getProductsRef(
-    storeId,
-    warehouseId,
-    shelfId,
-    subShelfId,
-    boxId
-  )
-    .orderBy("createdAt", "desc")
-    .get();
+  const snapshot =
+    await getProductsRef(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId
+    )
+      .orderBy("createdAt", "desc")
+      .get();
 
   return snapshot.docs.map((doc) => ({
     id: doc.id,
