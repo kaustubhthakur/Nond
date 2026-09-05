@@ -9,15 +9,11 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-paper">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-        
+       
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Top-left: inventory panel, medium size */}
-          <div className="lg:col-span-1">
-            <DashboardInventory />
-          </div>
-
-          {/* Remaining dashboard space — add more cards/widgets here */}
+        {/* Inventory panel: nudged left of the page container */}
+        <div className="max-w-xl -ml-2 sm:-ml-4">
+          <DashboardInventory />
         </div>
       </div>
     </main>
