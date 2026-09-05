@@ -184,7 +184,13 @@ export default function SellPage() {
                 <button
                   key={`${product.level}-${product.id}`}
                   type="button"
-                  onClick={() => openSellModal(product)}
+                  onClick={() => {
+  if (!product.id) {
+    alert("This product has a corrupted ID and can't be sold from here. Please remove and re-add it on the relevant shelf.");
+    return;
+  }
+  openSellModal(product);
+}}
                   className="text-left border border-line rounded-lg p-4 hover:border-accent transition-colors"
                 >
                   <div className="flex items-center justify-between">

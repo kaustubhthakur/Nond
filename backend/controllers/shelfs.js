@@ -51,7 +51,9 @@ const validateProductId = (productId) => {
   if (
     productId === undefined ||
     productId === null ||
-    !String(productId).trim()
+    !String(productId).trim() ||
+    String(productId).trim().toLowerCase() === "undefined" ||
+    String(productId).trim().toLowerCase() === "null"
   ) {
     return "Product ID is required";
   }

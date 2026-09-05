@@ -13,9 +13,22 @@ function toProductNode(product, { level, warehouse, shelf, subShelf, box }) {
   if (subShelf) pathParts.push(subShelf.name);
   if (box) pathParts.push(box.name);
 
+  const rawId = product.id ?? product.productId;
+  const safeId =
+    rawId && String(rawId).trim().toLowerCase() !== "undefined"
+      ? String(rawId)
+      : null;
+
+  const safeName =
+    product.name && String(product.name).trim()
+      ? product.name
+      : product.productId && String(product.productId).trim().toLowerCase() !== "undefined"
+      ? String(product.productId)
+      : "Unnamed product";
+
   return {
-    id: product.id,
-    name: product.name || product.productId,
+    id: safeId,
+    name: safeName,
     sku: product.sku || null,
     logo: product.logo || null,
     price: product.price,
