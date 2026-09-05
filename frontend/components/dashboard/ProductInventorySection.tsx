@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PackagePlus, Search, ShoppingCart } from "lucide-react";
+import { PackagePlus, Search, ShoppingCart, MapPin } from "lucide-react";
 
 import {
   addProductToShelf,
@@ -45,6 +45,8 @@ type ExitTarget = {
   sell: (quantity: number) => Promise<void>;
 };
 
+const VISIBLE_LIMIT = 6;
+
 export function ProductInventorySection({
   storeId,
   products,
@@ -75,6 +77,9 @@ export function ProductInventorySection({
         product.sku?.toLowerCase().includes(query)
     );
   }, [products, search]);
+
+  const visibleProducts = filteredProducts.slice(0, VISIBLE_LIMIT);
+  const remainingCount = filteredProducts.length - visibleProducts.length;
 
   const flash = (message: string) => {
     setBanner(message);
@@ -121,95 +126,93 @@ export function ProductInventorySection({
   return (
     <>
       {/* SEARCH */}
-      <div className="border-b border-line px-6 py-5">
-        <div className="mx-auto max-w-md">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products by name or SKU..."
-              className="w-full rounded-full border border-line bg-paper py-3 pl-11 pr-4 text-sm text-ink outline-none transition focus:border-accent"
-            />
-          </div>
+      <div className="border-b border-line px-5 py-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search products by name or SKU..."
+            className="w-full rounded-full border border-line bg-paper py-2.5 pl-10 pr-4 text-sm text-ink outline-none transition focus:border-accent"
+          />
         </div>
       </div>
 
       {/* BANNER */}
       {banner && (
-        <div className="mx-6 mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-700">
           {banner}
         </div>
       )}
 
-      {/* TABLE */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1050px] border-collapse">
-          <thead>
-            <tr className="bg-paper">
-              <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">Warehouse</th>
-              <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">Product</th>
-              <th className="border-b border-r border-line px-5 py-4 text-left text-sm font-semibold text-ink">Location</th>
-              <th className="border-b border-r border-line px-5 py-4 text-center text-sm font-semibold text-ink">Qty. in Stock</th>
-         
-              <th className="border-b border-line px-5 py-4 text-center text-sm font-semibold text-ink">Sell Qty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={6} className="px-6 py-16 text-center text-sm text-ink/50">
-                  Loading products from all warehouses...
-                </td>
-              </tr>
-            )}
-            {!loading && filteredProducts.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-16 text-center text-sm text-ink/50">
-                  No products found.
-                </td>
-              </tr>
-            )}
-            {!loading &&
-              filteredProducts.map((product) => (
-                <tr key={product.rowId} className="transition-colors hover:bg-ink/[0.02]">
-                  <td className="border-b border-r border-line px-5 py-4">
-                    <div className="font-medium text-ink">{product.warehouseName}</div>
-                    <div className="mt-1 font-mono text-xs text-ink/40">{product.warehouseId}</div>
-                  </td>
-                  <td className="border-b border-r border-line px-5 py-4">
-                    <div className="font-medium text-ink">{product.productName}</div>
-                    {product.sku && <div className="mt-1 text-xs text-ink/40">SKU: {product.sku}</div>}
-                  </td>
-                  <td className="border-b border-r border-line px-5 py-4">
-                    <span className="text-sm text-ink/70">{product.location}</span>
-                  </td>
-                  <td className="border-b border-r border-line px-5 py-4 text-center">
-                    <span className="rounded-md bg-ink/5 px-3 py-1.5 text-sm font-semibold text-ink">{product.quantity}</span>
-                  </td>
-                  
-                  <td className="border-b border-line px-5 py-4 text-center">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExitTarget({
-                          productId: product.productId,
-                          name: product.productName,
-                          quantity: product.quantity,
-                          sell: product.sell,
-                        })
-                      }
-                      className="inline-flex min-w-[110px] items-center justify-center gap-2 rounded-lg border border-red-400 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      Sell
-                    </button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+      {/* LIST */}
+      <div className="divide-y divide-line">
+        {loading && (
+          <p className="px-5 py-12 text-center text-sm text-ink/50">Loading products...</p>
+        )}
+
+        {!loading && visibleProducts.length === 0 && (
+          <p className="px-5 py-12 text-center text-sm text-ink/50">No products found.</p>
+        )}
+
+        {!loading &&
+          visibleProducts.map((product) => (
+            <div key={product.rowId} className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-ink/[0.02]">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="truncate text-sm font-medium text-ink">{product.productName}</span>
+                  {product.sku && (
+                    <span className="shrink-0 text-[11px] text-ink/40">SKU: {product.sku}</span>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-1 text-xs text-ink/50">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{product.location}</span>
+                </div>
+              </div>
+
+              <span className="shrink-0 rounded-md bg-ink/5 px-2.5 py-1 text-xs font-semibold text-ink">
+                {product.quantity}
+              </span>
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddTarget(product);
+                    setAddQuantity("");
+                  }}
+                  className="inline-flex items-center justify-center rounded-lg border border-emerald-500 p-1.5 text-emerald-600 transition hover:bg-emerald-50"
+                  title="Add quantity"
+                >
+                  <PackagePlus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExitTarget({
+                      productId: product.productId,
+                      name: product.productName,
+                      quantity: product.quantity,
+                      sell: product.sell,
+                    })
+                  }
+                  className="inline-flex items-center justify-center rounded-lg border border-red-400 p-1.5 text-red-600 transition hover:bg-red-50"
+                  title="Sell"
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
       </div>
+
+      {/* FOOTER */}
+      {!loading && remainingCount > 0 && (
+        <div className="border-t border-line px-5 py-3 text-center text-xs text-ink/50">
+          +{remainingCount} more product{remainingCount === 1 ? "" : "s"} not shown
+        </div>
+      )}
 
       {/* ADD QUANTITY MODAL */}
       {addTarget && (
