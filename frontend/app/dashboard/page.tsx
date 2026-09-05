@@ -644,10 +644,6 @@ export default function DashboardPage() {
                     Qty. in Stock
                   </th>
 
-                  <th className="border-b border-r border-line px-5 py-4 text-center text-sm font-semibold text-ink">
-                    Add Quantity
-                  </th>
-
                   <th className="border-b border-line px-5 py-4 text-center text-sm font-semibold text-ink">
                     Sell Qty
                   </th>
