@@ -1,4 +1,5 @@
 const pool = require("../pool");
+const { db } = require("../firebase/index.js");
 
 exports.createStore = async ({
   userId,
@@ -265,31 +266,51 @@ exports.deleteStore = async (storeId, userId) => {
   return result.rows[0];
 };
 
+/**
+ * Warehouses/shelves/sub-shelves/boxes all live in Firestore (see
+ * models/Warehouse.js, Shelf.js, SubShelf.js, Box.js), not Postgres —
+ * so this walks the same tree those models read/write, counting as
+ * it goes, instead of querying Postgres tables that don't exist.
+ */
 exports.getStoreStats = async (storeId) => {
-  const result = await pool.query(
-    `
-    SELECT
-      (SELECT COUNT(*) FROM warehouses WHERE store_id = $1) AS warehouse_count,
-      (SELECT COUNT(*) FROM shelves s
-         JOIN warehouses w ON s.warehouse_id = w.id
-         WHERE w.store_id = $1) AS shelf_count,
-      (SELECT COUNT(*) FROM subshelves ss
-         JOIN shelves s ON ss.shelf_id = s.id
-         JOIN warehouses w ON s.warehouse_id = w.id
-         WHERE w.store_id = $1) AS subshelf_count,
-      (SELECT COUNT(*) FROM boxes b
-         JOIN subshelves ss ON b.subshelf_id = ss.id
-         JOIN shelves s ON ss.shelf_id = s.id
-         JOIN warehouses w ON s.warehouse_id = w.id
-         WHERE w.store_id = $1) AS box_count
-    `,
-    [storeId]
-  );
-  const row = result.rows[0];
+  const warehousesSnap = await db
+    .collection("stores")
+    .doc(String(storeId))
+    .collection("warehouses")
+    .get();
+
+  let shelfCount = 0;
+  let subShelfCount = 0;
+  let boxCount = 0;
+
+  for (const warehouseDoc of warehousesSnap.docs) {
+    const shelvesSnap = await warehouseDoc.ref
+      .collection("shelves")
+      .get();
+
+    shelfCount += shelvesSnap.size;
+
+    for (const shelfDoc of shelvesSnap.docs) {
+      const subShelvesSnap = await shelfDoc.ref
+        .collection("subShelves")
+        .get();
+
+      subShelfCount += subShelvesSnap.size;
+
+      for (const subShelfDoc of subShelvesSnap.docs) {
+        const boxesSnap = await subShelfDoc.ref
+          .collection("boxes")
+          .get();
+
+        boxCount += boxesSnap.size;
+      }
+    }
+  }
+
   return {
-    warehouses: Number(row.warehouse_count),
-    shelves: Number(row.shelf_count),
-    subshelves: Number(row.subshelf_count),
-    boxes: Number(row.box_count),
+    warehouses: warehousesSnap.size,
+    shelves: shelfCount,
+    subshelves: subShelfCount,
+    boxes: boxCount,
   };
 };

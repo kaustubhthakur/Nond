@@ -181,28 +181,28 @@ export const shelfApi = {
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/products`
     ),
 
-  sellProduct: (
-    storeId: string,
-    warehouseId: string,
-    shelfId: string,
-    productId: string,
-    quantity: number
-  ) =>
-    request<{
-      success: true;
-      message: string;
-      product?: ShelfProduct;
-      deleted?: boolean;
-      quantity?: number;
-    }>(
-      `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product/${productId}`,
-      {
-        method: "POST",
-        body: {
-          quantity: Number(quantity),
-        },
-      }
-    ),
+sellProduct: (
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  productId: string,
+  quantity: number
+) =>
+  request<{
+    success: true;
+    message: string;
+    product?: ShelfProduct;
+    deleted?: boolean;
+    quantity?: number;
+  }>(
+    `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product/${productId}/sell`,
+    {
+      method: "POST",
+      body: {
+        quantity: Number(quantity),
+      },
+    }
+  ),
 };
 
 export const getShelves = shelfApi.list;
