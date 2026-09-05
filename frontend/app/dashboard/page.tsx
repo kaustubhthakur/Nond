@@ -6,7 +6,6 @@ import { TopSellingChartSection } from "@/components/dashboard/TopSellingChartSe
 import { InventoryValuationSection } from "@/components/dashboard/InventoryValuationSection";
 import { LowStockAlertSection } from "@/components/dashboard/LowStockAlertSection";
 import { LowStockHighlightSection } from "@/components/dashboard/LowStockHighlightSection";
-// import { TotalSalesSection } from "@/components/dashboard/TotalSalesSection"; // pending: needs StatCard.tsx, TotalSalesCard.tsx, and a real sales data source
 
 export default function DashboardPage() {
   const { store } = useStore();
@@ -23,12 +22,8 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <DashboardInventory />
-
-            {/* piechart, modal1, modal2 row */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <TopSellingChartSection />
-
-           
               <LowStockHighlightSection />
             </div>
           </div>
