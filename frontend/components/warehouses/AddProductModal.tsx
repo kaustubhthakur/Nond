@@ -74,7 +74,7 @@ export function AddProductModal({
 
     try {
       await onAdd({
-        name: productId.trim(),
+        productId: productId.trim(),
         logo: logo.trim() ? logo.trim() : undefined,
         price: productPrice,
         quantity: qty,
