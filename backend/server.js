@@ -13,6 +13,9 @@ const shelfRouter = require("./routes/shelfs");
 const subShelfRouter = require("./routes/subshelf");
 const searchRouter = require("./routes/search");
 const boxRouter = require("./routes/box");
+const saleRouter = require("./routes/sales");
+const sellOverviewRouter = require("./routes/sellOverview");
+
 const path = require("path");
 const PORT = process.env.PORT || 8081;
 console.log("CWD:", process.cwd());
@@ -41,7 +44,8 @@ app.use("/shelf", shelfRouter);
 app.use("/subshelf", subShelfRouter);
 app.use("/box", boxRouter);
 app.use("/search", searchRouter);
- 
+app.use("/sale", saleRouter);
+app.use("/sell-overview", sellOverviewRouter);
 
 
 const server = http.createServer(app);
