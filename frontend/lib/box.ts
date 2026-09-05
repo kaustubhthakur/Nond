@@ -1,7 +1,17 @@
 import { apiFetch } from "./api";
-import type { Box, BoxProduct, GetBoxesResponse, GetBoxProductsResponse } from "@/types/box";
+import type {
+  Box,
+  BoxProduct,
+  GetBoxesResponse,
+  GetBoxProductsResponse,
+} from "@/types/box";
 
-function basePath(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
+function basePath(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  subShelfId: string
+) {
   return `/box/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/sub-shelf/${subShelfId}`;
 }
 
@@ -11,8 +21,20 @@ interface BoxResponse {
   box: Box;
 }
 
-export function getBoxes(storeId: string, warehouseId: string, shelfId: string, subShelfId: string) {
-  return apiFetch<GetBoxesResponse>(basePath(storeId, warehouseId, shelfId, subShelfId));
+export function getBoxes(
+  storeId: string,
+  warehouseId: string,
+  shelfId: string,
+  subShelfId: string
+) {
+  return apiFetch<GetBoxesResponse>(
+    basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )
+  );
 }
 
 export function getBox(
@@ -22,7 +44,14 @@ export function getBox(
   subShelfId: string,
   boxId: string
 ) {
-  return apiFetch<BoxResponse>(`${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}`);
+  return apiFetch<BoxResponse>(
+    `${basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )}/${boxId}`
+  );
 }
 
 export function createBox(
@@ -30,12 +59,23 @@ export function createBox(
   warehouseId: string,
   shelfId: string,
   subShelfId: string,
-  payload: { name: string; description?: string }
+  payload: {
+    name: string;
+    description?: string;
+  }
 ) {
-  return apiFetch<BoxResponse>(basePath(storeId, warehouseId, shelfId, subShelfId), {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiFetch<BoxResponse>(
+    basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    ),
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
 }
 
 export function deleteBox(
@@ -45,9 +85,19 @@ export function deleteBox(
   subShelfId: string,
   boxId: string
 ) {
-  return apiFetch<{ success: boolean; message: string }>(
-    `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}`,
-    { method: "DELETE" }
+  return apiFetch<{
+    success: boolean;
+    message: string;
+  }>(
+    `${basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )}/${boxId}`,
+    {
+      method: "DELETE",
+    }
   );
 }
 
@@ -57,11 +107,29 @@ export function addProductToBox(
   shelfId: string,
   subShelfId: string,
   boxId: string,
-  payload: { name: string; sku?: string; quantity: number }
+  payload: {
+    name: string;
+    sku?: string;
+    logo?: string;
+    price: number;
+    quantity: number;
+  }
 ) {
-  return apiFetch<{ success: boolean; message: string; product: BoxProduct }>(
-    `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products`,
-    { method: "POST", body: JSON.stringify(payload) }
+  return apiFetch<{
+    success: boolean;
+    message: string;
+    product: BoxProduct;
+  }>(
+    `${basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )}/${boxId}/products`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
   );
 }
 
@@ -73,7 +141,12 @@ export function getBoxProducts(
   boxId: string
 ) {
   return apiFetch<GetBoxProductsResponse>(
-    `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products`
+    `${basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )}/${boxId}/products`
   );
 }
 
@@ -86,8 +159,20 @@ export function sellBoxProduct(
   productId: string,
   quantity: number
 ) {
-  return apiFetch<{ success: boolean; message: string; deleted?: boolean }>(
-    `${basePath(storeId, warehouseId, shelfId, subShelfId)}/${boxId}/products/${productId}/sell`,
-    { method: "POST", body: JSON.stringify({ quantity }) }
+  return apiFetch<{
+    success: boolean;
+    message: string;
+    deleted?: boolean;
+  }>(
+    `${basePath(
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId
+    )}/${boxId}/products/${productId}/sell`,
+    {
+      method: "POST",
+      body: JSON.stringify({ quantity }),
+    }
   );
 }
