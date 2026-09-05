@@ -24,7 +24,11 @@ export default function DashboardPage() {
             <DashboardInventory />
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <TopSellingChartSection />
-              <LowStockHighlightSection />
+        <div className="grid grid-cols-1 gap-6">
+  <LowStockHighlightSection />
+  <LowStockHighlightSection />
+</div>
+           
             </div>
           </div>
 
