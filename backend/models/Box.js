@@ -340,7 +340,6 @@ exports.addProduct = async (
     sku,
     logo,
     price,
-    costPrice,
     quantity,
   }
 ) => {
@@ -474,11 +473,6 @@ exports.addProduct = async (
       sku: sku || null,
       logo: logo || null,
       price: price ?? 0,
-      costPrice:
-        typeof costPrice === "number" &&
-        Number.isFinite(costPrice)
-          ? costPrice
-          : null,
       quantity,
 
       createdAt: now,
