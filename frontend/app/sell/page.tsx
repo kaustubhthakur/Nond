@@ -38,16 +38,13 @@ function toDatetimeLocalValue(d: Date) {
   )}:${pad(d.getMinutes())}`;
 }
 
-// A single product can live in multiple places, so the cart key has to
-// include location, not just the product id.
+
 function cartKey(p: SellOverviewProduct) {
   return [p.level, p.id, p.warehouseId, p.shelfId, p.subShelfId, p.boxId]
     .map((v) => v ?? "")
     .join("|");
 }
 
-// ASSUMPTION: product.path looks like "Shelf / SubShelf / Box".
-// We use the first segment as the shelf label.
 function getShelfLabel(product: SellOverviewProduct) {
   if (product.shelfName) return product.shelfName;
   if (!product.path) return product.shelfId ?? "Unassigned";
@@ -187,14 +184,14 @@ export default function SellPage() {
   const [activeWarehouse, setActiveWarehouse] = useState<string | null>(null);
   const [activeShelfKey, setActiveShelfKey] = useState<string | null>(null);
 
-  // ---- Single quick-sell modal ----
+
   const [selected, setSelected] = useState<SellOverviewProduct | null>(null);
   const [sellQty, setSellQty] = useState(1);
   const [sellDate, setSellDate] = useState(() => toDatetimeLocalValue(new Date()));
   const [selling, setSelling] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // ---- Bulk cart ----
+
   const [cart, setCart] = useState<Map<string, CartLine>>(new Map());
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutDate, setCheckoutDate] = useState(() =>
@@ -445,8 +442,7 @@ export default function SellPage() {
     setCheckoutError(null);
 
     try {
-      // Deduct stock at each location one at a time, so a failure
-      // tells us exactly which product it happened on.
+     
       for (const line of cartLines) {
         try {
           await sellAtLocation(storeId, line.product, line.quantity);
