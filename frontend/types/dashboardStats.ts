@@ -28,4 +28,5 @@ export interface HighestSellingItem {
   productKey: string;
   productName: string;
   quantitySold: number;
+  revenue: number;
 }

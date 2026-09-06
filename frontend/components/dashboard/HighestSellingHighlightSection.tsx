@@ -35,8 +35,6 @@ export function HighestSellingHighlightSection() {
 
         const { sales } = await getSales(storeId!, 500);
 
-        // Sum quantity sold per product across every line item of every sale
-        // (a single sale can itself contain multiple products/quantities).
         const totals = new Map<string, { productName: string; quantitySold: number }>();
 
         for (const raw of sales) {
