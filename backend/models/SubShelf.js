@@ -269,7 +269,7 @@ exports.addProduct = async (
   warehouseId,
   shelfId,
   subShelfId,
-  { name, sku, logo, price, quantity }
+  { name, sku, logo, price, costPrice, quantity }
 ) => {
   const subShelfRef = getSubShelfRef(
     storeId,
@@ -345,6 +345,11 @@ exports.addProduct = async (
       sku: sku || null,
       logo: logo || null,
       price: price ?? 0,
+      costPrice:
+        typeof costPrice === "number" &&
+        Number.isFinite(costPrice)
+          ? costPrice
+          : null,
       quantity,
 
       createdAt: now,

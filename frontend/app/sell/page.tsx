@@ -842,6 +842,9 @@ export default function SellPage() {
                       Total
                     </th>
                     <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Profit
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
                       Date
                     </th>
                   </tr>
@@ -883,28 +886,68 @@ export default function SellPage() {
                           <td className="px-4 py-3 text-right text-accent font-semibold tabular-nums">
                             {formatMoney(sale.total)}
                           </td>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            {sale.profitDataComplete ? (
+                              <span
+                                className={
+                                  sale.totalProfit >= 0
+                                    ? "text-emerald-600 font-medium"
+                                    : "text-rust font-medium"
+                                }
+                              >
+                                {formatMoney(sale.totalProfit)}
+                              </span>
+                            ) : (
+                              <span
+                                className="text-ink/30 text-xs"
+                                title="Some items in this sale are missing a cost price, so profit can't be fully calculated"
+                              >
+                                —
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-right text-ink/40 text-xs whitespace-nowrap">
                             {formatTime(sale.soldAt)}
                           </td>
                         </tr>
                         {isExpanded && (
                           <tr key={`${sale.id}-detail`} className="bg-ink/[0.01]">
-                            <td colSpan={4} className="px-4 py-3">
+                            <td colSpan={5} className="px-4 py-3">
                               <div className="space-y-1.5">
                                 {sale.items.map((item, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center justify-between text-xs"
+                                    className="flex items-center justify-between text-xs gap-3"
                                   >
-                                    <span className="text-ink/70">
+                                    <span className="text-ink/70 min-w-0 truncate">
                                       {item.productName}{" "}
                                       <span className="text-ink/35">
                                         ({item.warehouseName ?? "—"})
                                       </span>
                                     </span>
-                                    <span className="text-ink/50 tabular-nums">
+                                    <span className="text-ink/50 tabular-nums shrink-0">
                                       {item.quantity} × {formatMoney(item.price)} ={" "}
                                       {formatMoney(item.subtotal)}
+                                    </span>
+                                    <span className="tabular-nums shrink-0 w-20 text-right">
+                                      {item.profit !== null ? (
+                                        <span
+                                          className={
+                                            item.profit >= 0
+                                              ? "text-emerald-600"
+                                              : "text-rust"
+                                          }
+                                        >
+                                          {formatMoney(item.profit)}
+                                        </span>
+                                      ) : (
+                                        <span
+                                          className="text-ink/30"
+                                          title="No cost price recorded for this item"
+                                        >
+                                          —
+                                        </span>
+                                      )}
                                     </span>
                                   </div>
                                 ))}

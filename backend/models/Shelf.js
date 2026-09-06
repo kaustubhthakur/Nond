@@ -177,6 +177,7 @@ exports.addProductToShelf = async ({
   quantity,
   logo,
   price,
+  costPrice,
 }) => {
   const shelfRef = getShelvesRef(
     storeId,
@@ -222,6 +223,27 @@ exports.addProductToShelf = async ({
     );
   }
 
+  let productCostPrice = null;
+
+  if (
+    costPrice !== undefined &&
+    costPrice !== null &&
+    costPrice !== ""
+  ) {
+    const parsedCostPrice = Number(costPrice);
+
+    if (
+      !Number.isFinite(parsedCostPrice) ||
+      parsedCostPrice < 0
+    ) {
+      throw new Error(
+        "Cost price must be a valid non-negative number"
+      );
+    }
+
+    productCostPrice = parsedCostPrice;
+  }
+
   const currentQuantity =
     Number(shelfData.productQuantity) || 0;
 
@@ -248,6 +270,12 @@ exports.addProductToShelf = async ({
     shelfId: String(shelfId),
     logo: logo || null,
     price: productPrice,
+    costPrice:
+      productCostPrice !== null
+        ? productCostPrice
+        : existing.exists
+        ? existing.data().costPrice ?? null
+        : null,
     quantity: existingQuantity + addQuantity,
     createdAt: existing.exists
       ? existing.data().createdAt
