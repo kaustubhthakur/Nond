@@ -188,28 +188,24 @@ export default function SellPage() {
       ? activeWarehouse
       : warehouseStats[0]?.name ?? null;
 
-  const shelfStats = useMemo(() => {
-    const items = resolvedWarehouseName
-      ? warehouseItemsByName.get(resolvedWarehouseName) ?? []
-      : [];
-    const map = new Map
-      string,
-      { key: string, label: string, items: SellOverviewProduct[]; totalQty: number }
-    >();
-    for (const p of items) {
-      const key = p.shelfId ?? getShelfLabel(p);
-      const entry = map.get(key) ?? {
-        key,
-        label: getShelfLabel(p),
-        items: [],
-        totalQty: 0,
-      };
-      entry.items.push(p);
-      entry.totalQty += p.quantity;
-      map.set(key, entry);
-    }
-    return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
-  }, [warehouseItemsByName, resolvedWarehouseName]);
+ const shelfStats = useMemo(() => {
+  const items = resolvedWarehouseName
+    ? warehouseItemsByName.get(resolvedWarehouseName) ?? []
+    : [];
+
+  type ShelfEntry = { key: string; label: string; items: SellOverviewProduct[]; totalQty: number };
+  const map = new Map<string, ShelfEntry>();
+
+  for (const p of items) {
+    const key = p.shelfId ?? getShelfLabel(p);
+    const entry = map.get(key) ?? { key, label: getShelfLabel(p), items: [], totalQty: 0 };
+    entry.items.push(p);
+    entry.totalQty += p.quantity;
+    map.set(key, entry);
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
+}, [warehouseItemsByName, resolvedWarehouseName]);
 
   const topShelves = shelfStats.slice(0, 2);
   const otherShelves = shelfStats.slice(2);
