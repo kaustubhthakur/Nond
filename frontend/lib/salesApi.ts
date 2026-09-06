@@ -28,15 +28,16 @@ export interface Sale {
   itemCount: number;
   totalUnits: number;
   total: number;
+  totalProfit: number;
+  profitDataComplete: boolean;
   soldBy: string | null;
   soldAt: string;
-    totalProfit: number;
-
 }
 
 export interface CartLine {
   product: SellOverviewProduct;
   quantity: number;
+  salePrice: number; // editable at point of sale; defaults to product.price
 }
 
 export function getSales(storeId: string, limit = 100) {
@@ -47,30 +48,65 @@ export function getSales(storeId: string, limit = 100) {
 
 // lines.length === 1 for a quick single sell, > 1 for a bulk cart checkout.
 // Either way this writes exactly one Sale document.
-export function recordSale(storeId: string, lines: CartLine[], soldAt: string) {
+export function recordSale(
+  storeId: string,
+  lines: CartLine[],
+  soldAt: string
+) {
+  const items = lines.map(({ product, quantity, salePrice }) => {
+    const price = Number(salePrice);
+    const qty = Number(quantity);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error(
+        `Invalid sale price for "${product.name}": ${salePrice}`
+      );
+    }
+
+    if (!Number.isFinite(qty) || qty <= 0) {
+      throw new Error(
+        `Invalid quantity for "${product.name}": ${quantity}`
+      );
+    }
+
+    return {
+      warehouseId: product.warehouseId,
+      warehouseName: product.warehouseName,
+      level: product.level,
+      shelfId: product.shelfId,
+      shelfName: product.shelfName,
+      subShelfId: product.subShelfId,
+      subShelfName: product.subShelfName,
+      boxId: product.boxId,
+      boxName: product.boxName,
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+
+      // Force it to be a real number
+      price,
+
+      costPrice:
+        product.costPrice !== null &&
+        Number.isFinite(Number(product.costPrice))
+          ? Number(product.costPrice)
+          : null,
+
+      quantity: qty,
+    };
+  });
+
+  console.log("SALE PAYLOAD:", {
+    items,
+    soldAt,
+  });
+
   return apiFetch<{ success: boolean; message: string; sale: Sale }>(
     `/sale/store/${storeId}`,
     {
       method: "POST",
       body: JSON.stringify({
-        items: lines.map(({ product, quantity }) => ({
-          warehouseId: product.warehouseId,
-          warehouseName: product.warehouseName,
-          level: product.level,
-          shelfId: product.shelfId,
-          shelfName: product.shelfName,
-          subShelfId: product.subShelfId,
-          subShelfName: product.subShelfName,
-          boxId: product.boxId,
-          boxName: product.boxName,
-          productId: product.id,
-          productName: product.name,
-          sku: product.sku,
-          price: product.price,
-                 costPrice: product.costPrice,
-          quantity,
-
-        })),
+        items,
         soldAt,
       }),
     }
@@ -82,26 +118,43 @@ export function recordSale(storeId: string, lines: CartLine[], soldAt: string) {
 // has to special-case it.
 export function normalizeSale(raw: any): Sale {
   if (Array.isArray(raw.items)) {
-    const items: SaleItem[] = raw.items.map((item: any) => ({
-      warehouseId: item.warehouseId ?? null,
-      warehouseName: item.warehouseName ?? null,
-      level: item.level,
-      shelfId: item.shelfId ?? null,
-      shelfName: item.shelfName ?? null,
-      subShelfId: item.subShelfId ?? null,
-      subShelfName: item.subShelfName ?? null,
-      boxId: item.boxId ?? null,
-      boxName: item.boxName ?? null,
-      productId: item.productId ?? null,
-      productName: item.productName ?? "Unnamed product",
-      sku: item.sku ?? null,
-      price: Number(item.price) || 0,
-      quantity: Number(item.quantity) || 0,
-      subtotal:
-        typeof item.subtotal === "number"
-          ? item.subtotal
-          : (Number(item.price) || 0) * (Number(item.quantity) || 0),
-    }));
+    const items: SaleItem[] = raw.items.map((item: any) => {
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      const costPrice =
+        typeof item.costPrice === "number" ? item.costPrice : null;
+
+      return {
+        warehouseId: item.warehouseId ?? null,
+        warehouseName: item.warehouseName ?? null,
+        level: item.level,
+        shelfId: item.shelfId ?? null,
+        shelfName: item.shelfName ?? null,
+        subShelfId: item.subShelfId ?? null,
+        subShelfName: item.subShelfName ?? null,
+        boxId: item.boxId ?? null,
+        boxName: item.boxName ?? null,
+        productId: item.productId ?? null,
+        productName: item.productName ?? "Unnamed product",
+        sku: item.sku ?? null,
+        price,
+        quantity,
+        subtotal:
+          typeof item.subtotal === "number" ? item.subtotal : price * quantity,
+        costPrice,
+        profit:
+          typeof item.profit === "number"
+            ? item.profit
+            : costPrice !== null
+            ? (price - costPrice) * quantity
+            : null,
+      };
+    });
+
+    const totalProfit =
+      typeof raw.totalProfit === "number"
+        ? raw.totalProfit
+        : items.reduce((sum, i) => sum + (i.profit ?? 0), 0);
 
     return {
       id: raw.id,
@@ -111,6 +164,11 @@ export function normalizeSale(raw: any): Sale {
       totalUnits:
         raw.totalUnits ?? items.reduce((sum, i) => sum + i.quantity, 0),
       total: raw.total ?? items.reduce((sum, i) => sum + i.subtotal, 0),
+      totalProfit,
+      profitDataComplete:
+        typeof raw.profitDataComplete === "boolean"
+          ? raw.profitDataComplete
+          : items.every((i) => i.profit !== null),
       soldBy: raw.soldBy ?? null,
       soldAt: raw.soldAt,
     };
@@ -119,6 +177,9 @@ export function normalizeSale(raw: any): Sale {
   // Legacy single-product shape: { productName, price, quantity, ... }
   const price = Number(raw.price) || 0;
   const quantity = Number(raw.quantity) || 0;
+  const costPrice = typeof raw.costPrice === "number" ? raw.costPrice : null;
+  const profit = costPrice !== null ? (price - costPrice) * quantity : null;
+
   const legacyItem: SaleItem = {
     warehouseId: raw.warehouseId ?? null,
     warehouseName: raw.warehouseName ?? null,
@@ -135,6 +196,8 @@ export function normalizeSale(raw: any): Sale {
     price,
     quantity,
     subtotal: typeof raw.total === "number" ? raw.total : price * quantity,
+    costPrice,
+    profit,
   };
 
   return {
@@ -144,6 +207,8 @@ export function normalizeSale(raw: any): Sale {
     itemCount: 1,
     totalUnits: quantity,
     total: legacyItem.subtotal,
+    totalProfit: profit ?? 0,
+    profitDataComplete: profit !== null,
     soldBy: raw.soldBy ?? null,
     soldAt: raw.soldAt,
   };

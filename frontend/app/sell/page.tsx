@@ -171,6 +171,34 @@ function QtyStepper({
   );
 }
 
+// Small editable price input, used at point-of-sale so the price charged
+// (CartLine.salePrice) can differ from the catalog price on the product.
+function PriceInput({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  className?: string;
+}) {
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink/40">
+        ₹
+      </span>
+      <input
+        type="number"
+        min={0}
+        step="0.01"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className={`border border-line rounded-lg pl-7 pr-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors ${className}`}
+      />
+    </div>
+  );
+}
+
 export default function SellPage() {
   const { store } = useStore();
   const storeId = store?.id ? String(store.id) : null;
@@ -187,6 +215,7 @@ export default function SellPage() {
 
   const [selected, setSelected] = useState<SellOverviewProduct | null>(null);
   const [sellQty, setSellQty] = useState(1);
+  const [sellPrice, setSellPrice] = useState<number>(0);
   const [sellDate, setSellDate] = useState(() => toDatetimeLocalValue(new Date()));
   const [selling, setSelling] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -326,6 +355,7 @@ export default function SellPage() {
     if (product.quantity <= 0) return;
     setSelected(product);
     setSellQty(1);
+    setSellPrice(product.price ?? 0);
     setSellDate(toDatetimeLocalValue(new Date()));
     setModalError(null);
   };
@@ -343,6 +373,11 @@ export default function SellPage() {
       return;
     }
 
+    if (!Number.isFinite(sellPrice) || sellPrice <= 0) {
+      setModalError("Enter a valid selling price");
+      return;
+    }
+
     if (!sellDate) {
       setModalError("Please pick a valid date");
       return;
@@ -357,7 +392,7 @@ export default function SellPage() {
       await sellAtLocation(storeId, selected, sellQty);
       const { sale } = await recordSale(
         storeId,
-        [{ product: selected, quantity: sellQty }],
+        [{ product: selected, quantity: sellQty, salePrice: sellPrice }],
         soldAtIso
       );
 
@@ -388,7 +423,11 @@ export default function SellPage() {
       const key = cartKey(product);
       const existing = next.get(key);
       const nextQty = Math.min(product.quantity, (existing?.quantity ?? 0) + 1);
-      next.set(key, { product, quantity: nextQty });
+      next.set(key, {
+        product,
+        quantity: nextQty,
+        salePrice: existing?.salePrice ?? product.price ?? 0,
+      });
       return next;
     });
   };
@@ -400,6 +439,17 @@ export default function SellPage() {
       const next = new Map(prev);
       const clamped = Math.max(1, Math.min(line.product.quantity, qty || 1));
       next.set(key, { ...line, quantity: clamped });
+      return next;
+    });
+  };
+
+  const updateCartPrice = (key: string, price: number) => {
+    setCart((prev) => {
+      const line = prev.get(key);
+      if (!line) return prev;
+      const next = new Map(prev);
+      const safePrice = Number.isFinite(price) && price >= 0 ? price : line.salePrice;
+      next.set(key, { ...line, salePrice: safePrice });
       return next;
     });
   };
@@ -418,8 +468,11 @@ export default function SellPage() {
   const cartCount = cartLines.length;
   const cartTotalUnits = cartLines.reduce((sum, l) => sum + l.quantity, 0);
   const cartTotalValue = cartLines.reduce(
-    (sum, l) => sum + l.quantity * l.product.price,
+    (sum, l) => sum + l.quantity * l.salePrice,
     0
+  );
+  const cartHasInvalidPrice = cartLines.some(
+    (l) => !Number.isFinite(l.salePrice) || l.salePrice <= 0
   );
 
   const openCheckout = () => {
@@ -430,6 +483,11 @@ export default function SellPage() {
 
   const confirmCheckout = async () => {
     if (!storeId || cartLines.length === 0) return;
+
+    if (cartHasInvalidPrice) {
+      setCheckoutError("Every item needs a selling price greater than 0");
+      return;
+    }
 
     if (!checkoutDate) {
       setCheckoutError("Please pick a valid date");
@@ -894,20 +952,33 @@ export default function SellPage() {
                   {selected.quantity}
                 </span>
               </span>
-              <span className="tabular-nums">
-                {formatMoney(selected.price)} / unit
+              <span className="tabular-nums text-ink/40">
+                Catalog price: {formatMoney(selected.price)}
               </span>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-ink/60 block mb-1.5">
-                Quantity to sell
-              </label>
-              <QtyStepper
-                value={sellQty}
-                max={selected.quantity}
-                onChange={setSellQty}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-ink/60 block mb-1.5">
+                  Quantity to sell
+                </label>
+                <QtyStepper
+                  value={sellQty}
+                  max={selected.quantity}
+                  onChange={setSellQty}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-ink/60 block mb-1.5">
+                  Selling price / unit
+                </label>
+                <PriceInput
+                  value={sellPrice}
+                  onChange={setSellPrice}
+                  className="w-full"
+                />
+              </div>
             </div>
 
             <div>
@@ -925,7 +996,7 @@ export default function SellPage() {
             <div className="flex items-center justify-between text-sm bg-ink/[0.03] rounded-lg px-3.5 py-2.5">
               <span className="text-ink/60">Total</span>
               <span className="text-accent font-semibold tabular-nums">
-                {formatMoney((sellQty || 0) * selected.price)}
+                {formatMoney((sellQty || 0) * (sellPrice || 0))}
               </span>
             </div>
 
@@ -1004,6 +1075,8 @@ export default function SellPage() {
               <div className="space-y-3">
                 {cartLines.map((line) => {
                   const key = cartKey(line.product);
+                  const invalidPrice =
+                    !Number.isFinite(line.salePrice) || line.salePrice <= 0;
                   return (
                     <div
                       key={key}
@@ -1043,10 +1116,20 @@ export default function SellPage() {
                           max={line.product.quantity}
                           onChange={(n) => updateCartQty(key, n)}
                         />
-                        <span className="text-sm font-semibold text-accent tabular-nums">
-                          {formatMoney(line.quantity * line.product.price)}
+                        <PriceInput
+                          value={line.salePrice}
+                          onChange={(n) => updateCartPrice(key, n)}
+                          className="w-28 text-right"
+                        />
+                        <span className="text-sm font-semibold text-accent tabular-nums shrink-0">
+                          {formatMoney(line.quantity * (line.salePrice || 0))}
                         </span>
                       </div>
+                      {invalidPrice && (
+                        <p className="text-rust text-xs">
+                          Enter a selling price greater than 0
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -1091,7 +1174,7 @@ export default function SellPage() {
               <button
                 type="button"
                 onClick={confirmCheckout}
-                disabled={checkingOut || cartLines.length === 0}
+                disabled={checkingOut || cartLines.length === 0 || cartHasInvalidPrice}
                 className="flex-1 bg-accent text-paper rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
               >
                 {checkingOut ? "Selling…" : "Complete sale"}
