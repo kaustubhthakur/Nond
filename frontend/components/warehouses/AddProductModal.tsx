@@ -17,7 +17,8 @@ export function AddProductModal({
   onClose,
   onAdd,
 }: AddProductModalProps) {
-  const [productId, setProductId] = useState("");
+  const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
   const [logo, setLogo] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -38,8 +39,8 @@ export function AddProductModal({
     e.preventDefault();
     setError(null);
 
-    if (!productId.trim()) {
-      setError("Product ID is required");
+    if (!name.trim()) {
+      setError("Product name is required");
       return;
     }
 
@@ -74,7 +75,8 @@ export function AddProductModal({
 
     try {
       await onAdd({
-        productId: productId.trim(),
+        name: name.trim(),
+        sku: sku.trim() ? sku.trim() : undefined,
         logo: logo.trim() ? logo.trim() : undefined,
         price: productPrice,
         quantity: qty,
@@ -110,18 +112,33 @@ export function AddProductModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="eyebrow text-ink/60" htmlFor="product-id">
-              Product ID
+            <label className="eyebrow text-ink/60" htmlFor="product-name">
+              Product Name
             </label>
 
             <input
-              id="product-id"
+              id="product-name"
               type="text"
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
+              placeholder="e.g. Redmi Note 7 Black"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="eyebrow text-ink/60" htmlFor="product-sku">
+              SKU <span className="text-ink/30">(optional)</span>
+            </label>
+
+            <input
+              id="product-sku"
+              type="text"
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
               className="border border-line bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
               placeholder="e.g. PROD-1042"
-              autoFocus
             />
           </div>
 
