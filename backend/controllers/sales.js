@@ -5,72 +5,59 @@ const getStoreForUser = async (userId, storeId) => {
   return await Store.getStoreById(storeId, userId);
 };
 
+const LEVELS = ["shelf", "subShelf", "box"];
+
+function validateItem(item, index) {
+  if (!item || typeof item !== "object") {
+    return `Item ${index + 1} is invalid`;
+  }
+  if (!item.warehouseId) {
+    return `Item ${index + 1} is missing a warehouse ID`;
+  }
+  if (!LEVELS.includes(item.level)) {
+    return `Item ${index + 1} has an invalid level`;
+  }
+  if (typeof item.productName !== "string" || !item.productName.trim()) {
+    return `Item ${index + 1} is missing a product name`;
+  }
+  const price = Number(item.price);
+  const quantity = Number(item.quantity);
+  if (!Number.isFinite(price) || price < 0) {
+    return `Item ${index + 1} has an invalid price`;
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return `Item ${index + 1} has an invalid quantity`;
+  }
+  return null;
+}
+
+// Accepts { items: [...], soldAt } for both a single quick-sell (items.length === 1)
+// and a bulk cart checkout (items.length > 1). Both paths write one Sale document.
 exports.createSale = async (req, res) => {
   try {
     const userId = req.user.id;
     const { storeId } = req.params;
-
-    const {
-      warehouseId,
-      warehouseName,
-      level,
-      shelfId,
-      shelfName,
-      subShelfId,
-      subShelfName,
-      boxId,
-      boxName,
-      productId,
-      productName,
-      sku,
-      price,
-      quantity,
-      soldAt, // client-supplied sale date
-    } = req.body;
+    const { items, soldAt } = req.body;
 
     if (!storeId) {
       return res.status(400).json({ error: "Store ID is required" });
     }
 
     const store = await getStoreForUser(userId, storeId);
-
     if (!store) {
-      return res.status(403).json({
-        error: "You do not have access to this store",
-      });
+      return res.status(403).json({ error: "You do not have access to this store" });
     }
 
-    if (!warehouseId) {
-      return res.status(400).json({ error: "Warehouse ID is required" });
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "At least one item is required" });
     }
 
-    if (!["shelf", "subShelf", "box"].includes(level)) {
-      return res.status(400).json({
-        error: "level must be one of shelf, subShelf, box",
-      });
+    for (let i = 0; i < items.length; i++) {
+      const error = validateItem(items[i], i);
+      if (error) return res.status(400).json({ error });
     }
 
-    if (typeof productName !== "string" || !productName.trim()) {
-      return res.status(400).json({ error: "Product name is required" });
-    }
-
-    const numericPrice = Number(price);
-    const numericQuantity = Number(quantity);
-
-    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      return res.status(400).json({
-        error: "Price must be a non-negative number",
-      });
-    }
-
-    if (!Number.isInteger(numericQuantity) || numericQuantity <= 0) {
-      return res.status(400).json({
-        error: "Quantity must be a positive integer",
-      });
-    }
-
-    // Validate the client-supplied date; fall back to "now" if missing/invalid
-    let resolvedSoldAt = new Date();
+    let resolvedSoldAt;
     if (soldAt) {
       const parsed = new Date(soldAt);
       if (isNaN(parsed.getTime())) {
@@ -81,20 +68,10 @@ exports.createSale = async (req, res) => {
 
     const sale = await Sale.createSale({
       storeId,
-      warehouseId,
-      warehouseName,
-      level,
-      shelfId,
-      shelfName,
-      subShelfId,
-      subShelfName,
-      boxId,
-      boxName,
-      productId,
-      productName: productName.trim(),
-      sku,
-      price: numericPrice,
-      quantity: numericQuantity,
+      items: items.map((item) => ({
+        ...item,
+        productName: item.productName.trim(),
+      })),
       soldBy: req.user.username || req.user.id,
       soldAt: resolvedSoldAt,
     });
@@ -106,10 +83,7 @@ exports.createSale = async (req, res) => {
     });
   } catch (err) {
     console.error("Create sale error:", err);
-
-    return res.status(500).json({
-      error: err.message || "Failed to record sale",
-    });
+    return res.status(500).json({ error: err.message || "Failed to record sale" });
   }
 };
 
@@ -124,25 +98,14 @@ exports.getSales = async (req, res) => {
     }
 
     const store = await getStoreForUser(userId, storeId);
-
     if (!store) {
-      return res.status(403).json({
-        error: "You do not have access to this store",
-      });
+      return res.status(403).json({ error: "You do not have access to this store" });
     }
 
     const sales = await Sale.getSales(storeId, limit);
-
-    return res.status(200).json({
-      success: true,
-      count: sales.length,
-      sales,
-    });
+    return res.status(200).json({ success: true, count: sales.length, sales });
   } catch (err) {
     console.error("Get sales error:", err);
-
-    return res.status(500).json({
-      error: err.message || "Failed to get sales",
-    });
+    return res.status(500).json({ error: err.message || "Failed to get sales" });
   }
 };
