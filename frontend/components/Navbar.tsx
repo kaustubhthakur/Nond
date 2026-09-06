@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import { authApi } from "@/lib/api";
-
+import logo from "@/logo/icon.png";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
 
 function navLinkClass(active: boolean) {
@@ -92,6 +92,16 @@ export function Navbar() {
     <header className="border-b border-line bg-paper/90 backdrop-blur sticky top-0 z-10">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 group">
+ <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-ink/10 bg-white">
+  <Image
+    src={logo}
+    alt="Nond"
+    width={36}
+    height={36}
+    priority
+    className="h-full w-full object-contain"
+  />
+</div>
           {store ? (
             <>
               <button
