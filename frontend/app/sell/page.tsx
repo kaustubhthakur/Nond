@@ -16,13 +16,23 @@ function formatMoney(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
+function formatTime(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function toDatetimeLocalValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
 }
 
 async function sellAtLocation(
@@ -74,6 +84,7 @@ export default function SellPage() {
 
   const [selected, setSelected] = useState<SellOverviewProduct | null>(null);
   const [sellQty, setSellQty] = useState(1);
+  const [sellDate, setSellDate] = useState(() => toDatetimeLocalValue(new Date()));
   const [selling, setSelling] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -83,7 +94,14 @@ export default function SellPage() {
       getSales(id),
     ]);
     setProducts(flattenProducts(overview.warehouses));
-    setSales(salesRes.sales);
+
+    // Normalize whatever timestamp field the backend actually sends
+    // (createdAt is what's coming back — soldAt was never populated)
+    const normalized = salesRes.sales.map((s: any) => ({
+      ...s,
+      createdAt: s.createdAt ?? s.soldAt ?? s.created_at ?? null,
+    }));
+    setSales(normalized);
   };
 
   useEffect(() => {
@@ -118,6 +136,7 @@ export default function SellPage() {
   const openSellModal = (product: SellOverviewProduct) => {
     setSelected(product);
     setSellQty(1);
+    setSellDate(toDatetimeLocalValue(new Date()));
     setModalError(null);
   };
 
@@ -134,12 +153,34 @@ export default function SellPage() {
       return;
     }
 
+    if (!sellDate) {
+      setModalError("Please pick a valid date");
+      return;
+    }
+
+    const createdAtIso = new Date(sellDate).toISOString();
+
     setSelling(true);
     setModalError(null);
 
     try {
       await sellAtLocation(storeId, selected, sellQty);
-      await recordSale(storeId, selected, sellQty);
+      await recordSale(storeId, selected, sellQty, createdAtIso);
+
+      // Build the row locally right away instead of trusting the reload
+      // to bring back a correctly-populated timestamp field
+      const localSale: Sale = {
+        id: `${selected.id}-${Date.now()}`,
+        productName: selected.name,
+        warehouseName: selected.warehouseName,
+        price: selected.price,
+        quantity: sellQty,
+        total: sellQty * selected.price,
+        createdAt: createdAtIso,
+      } as Sale;
+
+      setSales((prev) => [localSale, ...prev]);
+
       await loadOverview(storeId);
       closeModal();
     } catch (err: any) {
@@ -185,12 +226,14 @@ export default function SellPage() {
                   key={`${product.level}-${product.id}`}
                   type="button"
                   onClick={() => {
-  if (!product.id) {
-    alert("This product has a corrupted ID and can't be sold from here. Please remove and re-add it on the relevant shelf.");
-    return;
-  }
-  openSellModal(product);
-}}
+                    if (!product.id) {
+                      alert(
+                        "This product has a corrupted ID and can't be sold from here. Please remove and re-add it on the relevant shelf."
+                      );
+                      return;
+                    }
+                    openSellModal(product);
+                  }}
                   className="text-left border border-line rounded-lg p-4 hover:border-accent transition-colors"
                 >
                   <div className="flex items-center justify-between">
@@ -236,31 +279,46 @@ export default function SellPage() {
         {sales.length === 0 ? (
           <p className="text-ink/60 text-sm">No sales yet.</p>
         ) : (
-          <div className="border border-line rounded-lg divide-y divide-line">
-            {sales.map((sale) => (
-              <div
-                key={sale.id}
-                className="p-3 flex items-center justify-between text-sm"
-              >
-                <div>
-                  <div className="font-medium text-ink">
-                    {sale.productName}
-                  </div>
-                  <div className="text-ink/50 text-xs">
-                    {sale.warehouseName} · {formatTime(sale.soldAt)}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-accent font-medium">
-                    {formatMoney(sale.total)}
-                  </div>
-                  <div className="text-ink/50 text-xs">
-                    Qty {sale.quantity} × {formatMoney(sale.price)}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="border border-line rounded-lg overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-line text-left text-ink/50 eyebrow">
+                  <th className="px-3 py-2 font-medium">Product</th>
+                  <th className="px-3 py-2 font-medium text-right">Price</th>
+                  <th className="px-3 py-2 font-medium text-right">Units</th>
+                  <th className="px-3 py-2 font-medium text-right">
+                    Subtotal
+                  </th>
+                  <th className="px-3 py-2 font-medium text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {sales.map((sale: any) => (
+                  <tr key={sale.id}>
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-ink">
+                        {sale.productName}
+                      </div>
+                      <div className="text-ink/50 text-xs">
+                        {sale.warehouseName}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right text-ink/70">
+                      {formatMoney(sale.price)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-ink/70">
+                      {sale.quantity}
+                    </td>
+                    <td className="px-3 py-2 text-right text-accent font-medium">
+                      {formatMoney(sale.total)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-ink/50 text-xs whitespace-nowrap">
+                      {formatTime(sale.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
@@ -294,6 +352,18 @@ export default function SellPage() {
               />
             </div>
 
+            <div>
+              <label className="text-xs text-ink/60 block mb-1">
+                Sale date &amp; time
+              </label>
+              <input
+                type="datetime-local"
+                value={sellDate}
+                onChange={(e) => setSellDate(e.target.value)}
+                className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
+              />
+            </div>
+
             <div className="flex items-center justify-between text-sm">
               <span className="text-ink/60">Total</span>
               <span className="text-accent font-medium">
@@ -301,9 +371,7 @@ export default function SellPage() {
               </span>
             </div>
 
-            {modalError && (
-              <p className="text-rust text-xs">{modalError}</p>
-            )}
+            {modalError && <p className="text-rust text-xs">{modalError}</p>}
 
             <div className="flex gap-3">
               <button
