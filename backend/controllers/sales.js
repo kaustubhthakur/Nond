@@ -31,8 +31,7 @@ function validateItem(item, index) {
   return null;
 }
 
-// Accepts { items: [...], soldAt } for both a single quick-sell (items.length === 1)
-// and a bulk cart checkout (items.length > 1). Both paths write one Sale document.
+
 exports.createSale = async (req, res) => {
   try {
     const userId = req.user.id;
