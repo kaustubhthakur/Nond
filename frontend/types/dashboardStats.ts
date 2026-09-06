@@ -24,3 +24,8 @@ export type DashboardStats = {
   topSelling: TopSellingSlice[];
   monthlyValuation: MonthlyValuation[];
 };
+export interface HighestSellingItem {
+  productKey: string;
+  productName: string;
+  quantitySold: number;
+}

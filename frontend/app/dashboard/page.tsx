@@ -6,6 +6,7 @@ import { TopSellingChartSection } from "@/components/dashboard/TopSellingChartSe
 import { InventoryValuationSection } from "@/components/dashboard/InventoryValuationSection";
 import { LowStockAlertSection } from "@/components/dashboard/LowStockAlertSection";
 import { LowStockHighlightSection } from "@/components/dashboard/LowStockHighlightSection";
+import { HighestSellingHighlightSection } from "@/components/dashboard/HighestSellingHighlightSection";
 
 export default function DashboardPage() {
   const { store } = useStore();
@@ -20,7 +21,7 @@ export default function DashboardPage() {
               <TopSellingChartSection />
         <div className="grid grid-cols-1 gap-6">
   <LowStockHighlightSection />
-  <LowStockHighlightSection />
+  <HighestSellingHighlightSection/>
 </div>
           
             </div>
