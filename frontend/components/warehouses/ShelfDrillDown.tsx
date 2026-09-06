@@ -33,7 +33,10 @@ import {
 } from "recharts";
 
 interface AddProductPayload {
-  productId: string;
+  name: string;
+  sku?: string;
+  logo?: string;
+  price: number;
   quantity: number;
 }
 

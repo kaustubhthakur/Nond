@@ -41,7 +41,8 @@ export interface ShelfProduct {
 }
 
 export interface AddProductToShelfPayload {
-  productId: string;
+  name: string;
+  sku?: string;
   logo?: string;
   price: number;
   quantity: number;

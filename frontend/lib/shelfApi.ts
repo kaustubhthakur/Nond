@@ -153,7 +153,9 @@ export const shelfApi = {
       {
         method: "POST",
         body: {
-          productId: String(payload.productId).trim(),
+          // The shelf-level backend endpoint expects this field as "productId",
+          // even though the modal collects it as a product "name".
+          productId: String(payload.name).trim(),
           logo:
             payload.logo !== undefined &&
             payload.logo !== null &&
@@ -181,28 +183,28 @@ export const shelfApi = {
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/products`
     ),
 
-sellProduct: (
-  storeId: string,
-  warehouseId: string,
-  shelfId: string,
-  productId: string,
-  quantity: number
-) =>
-  request<{
-    success: true;
-    message: string;
-    product?: ShelfProduct;
-    deleted?: boolean;
-    quantity?: number;
-  }>(
-    `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product/${productId}/sell`,
-    {
-      method: "POST",
-      body: {
-        quantity: Number(quantity),
-      },
-    }
-  ),
+  sellProduct: (
+    storeId: string,
+    warehouseId: string,
+    shelfId: string,
+    productId: string,
+    quantity: number
+  ) =>
+    request<{
+      success: true;
+      message: string;
+      product?: ShelfProduct;
+      deleted?: boolean;
+      quantity?: number;
+    }>(
+      `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/product/${productId}/sell`,
+      {
+        method: "POST",
+        body: {
+          quantity: Number(quantity),
+        },
+      }
+    ),
 };
 
 export const getShelves = shelfApi.list;
