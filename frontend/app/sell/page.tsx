@@ -102,11 +102,66 @@ async function sellAtLocation(
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string | number }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
   return (
-    <div className="rounded-xl border border-line bg-paper px-4 py-3">
-      <div className="eyebrow text-ink/50">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-ink">{value}</div>
+    <div className="rounded-lg border border-line bg-paper px-4 py-3.5">
+      <div className="text-xs font-medium text-ink/50">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="text-xl font-semibold text-ink tabular-nums">
+          {value}
+        </span>
+        {hint && <span className="text-xs text-ink/40">{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
+function QtyStepper({
+  value,
+  max,
+  onChange,
+}: {
+  value: number;
+  max: number;
+  onChange: (n: number) => void;
+}) {
+  const clamp = (n: number) => Math.max(1, Math.min(max, n || 1));
+  return (
+    <div className="flex items-stretch border border-line rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onChange(clamp(value - 1))}
+        disabled={value <= 1}
+        className="w-10 flex items-center justify-center text-ink/60 hover:bg-ink/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        aria-label="Decrease quantity"
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min={1}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(clamp(Number(e.target.value)))}
+        className="w-full text-center text-sm font-medium bg-transparent focus:outline-none tabular-nums border-x border-line"
+      />
+      <button
+        type="button"
+        onClick={() => onChange(clamp(value + 1))}
+        disabled={value >= max}
+        className="w-10 flex items-center justify-center text-ink/60 hover:bg-ink/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+        aria-label="Increase quantity"
+      >
+        +
+      </button>
     </div>
   );
 }
@@ -188,24 +243,30 @@ export default function SellPage() {
       ? activeWarehouse
       : warehouseStats[0]?.name ?? null;
 
- const shelfStats = useMemo(() => {
-  const items = resolvedWarehouseName
-    ? warehouseItemsByName.get(resolvedWarehouseName) ?? []
-    : [];
+  const shelfStats = useMemo(() => {
+    const items = resolvedWarehouseName
+      ? warehouseItemsByName.get(resolvedWarehouseName) ?? []
+      : [];
 
-  type ShelfEntry = { key: string; label: string; items: SellOverviewProduct[]; totalQty: number };
-  const map = new Map<string, ShelfEntry>();
+    type ShelfEntry = {
+      key: string;
+      label: string;
+      items: SellOverviewProduct[];
+      totalQty: number;
+    };
+    const map = new Map<string, ShelfEntry>();
 
-  for (const p of items) {
-    const key = p.shelfId ?? getShelfLabel(p);
-    const entry = map.get(key) ?? { key, label: getShelfLabel(p), items: [], totalQty: 0 };
-    entry.items.push(p);
-    entry.totalQty += p.quantity;
-    map.set(key, entry);
-  }
+    for (const p of items) {
+      const key = p.shelfId ?? getShelfLabel(p);
+      const entry =
+        map.get(key) ?? { key, label: getShelfLabel(p), items: [], totalQty: 0 };
+      entry.items.push(p);
+      entry.totalQty += p.quantity;
+      map.set(key, entry);
+    }
 
-  return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
-}, [warehouseItemsByName, resolvedWarehouseName]);
+    return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
+  }, [warehouseItemsByName, resolvedWarehouseName]);
 
   const topShelves = shelfStats.slice(0, 2);
   const otherShelves = shelfStats.slice(2);
@@ -232,6 +293,9 @@ export default function SellPage() {
     (sum, p) => sum + p.quantity * p.price,
     0
   );
+  const lowStockCount = filteredProducts.filter(
+    (p) => p.quantity <= LOW_STOCK_THRESHOLD
+  ).length;
 
   // ---- Sell modal ----
 
@@ -282,29 +346,42 @@ export default function SellPage() {
 
   if (!storeId) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-10 text-ink/60">
+      <div className="max-w-6xl mx-auto px-4 py-10 text-ink/60 text-sm">
         Loading store…
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
         <div>
-          <h1 className="font-display italic text-2xl text-ink">Sell</h1>
+          <h1 className="font-display text-2xl text-ink">Sell</h1>
           <p className="text-sm text-ink/50 mt-0.5">
-            {store?.name ?? "Store"} · Point of sale
+            {store?.name ?? "Store"} — point of sale
           </p>
         </div>
-        <div className="w-full sm:w-72">
+        <div className="relative w-full sm:w-72">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search product by name or SKU"
-            className="w-full border border-line rounded-full px-4 py-2 text-sm bg-paper focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
+            placeholder="Search by name or SKU"
+            className="w-full border border-line rounded-lg pl-9 pr-4 py-2 text-sm bg-paper focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
           />
         </div>
       </div>
@@ -313,23 +390,39 @@ export default function SellPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <MetricCard label="Warehouses" value={totalWarehouses} />
         <MetricCard label="Active SKUs" value={totalSkus} />
-        <MetricCard label="Units in stock" value={totalUnits.toLocaleString("en-IN")} />
-        <MetricCard label="Stock value" value={formatMoney(totalStockValue)} />
+        <MetricCard
+          label="Units in stock"
+          value={totalUnits.toLocaleString("en-IN")}
+        />
+        <MetricCard
+          label="Stock value"
+          value={formatMoney(totalStockValue)}
+          hint={lowStockCount > 0 ? `${lowStockCount} low stock` : undefined}
+        />
       </div>
 
-      {loading && <p className="text-ink/60 text-sm">Loading products…</p>}
-      {error && <p className="text-rust text-sm">{error}</p>}
+      {loading && (
+        <div className="rounded-lg border border-line bg-paper px-4 py-8 text-center text-sm text-ink/50">
+          Loading products…
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg border border-rust/20 bg-rust/5 px-4 py-3 text-sm text-rust">
+          {error}
+        </div>
+      )}
 
       {!loading && warehouseStats.length === 0 && (
-        <p className="text-ink/60 text-sm">No products found.</p>
+        <div className="rounded-lg border border-line bg-paper px-4 py-8 text-center text-sm text-ink/50">
+          No products found.
+        </div>
       )}
 
       {!loading && warehouseStats.length > 0 && (
-        <section className="rounded-xl border border-line bg-paper shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-line space-y-4">
-            {/* Warehouse selector */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="eyebrow text-ink/50 mr-1">Warehouse</span>
+        <section className="rounded-lg border border-line bg-paper shadow-sm overflow-hidden">
+          <div className="border-b border-line">
+            {/* Warehouse tabs */}
+            <div className="flex items-center gap-1 px-5 pt-4 overflow-x-auto">
               {topWarehouses.map((w) => (
                 <button
                   key={w.name}
@@ -338,16 +431,19 @@ export default function SellPage() {
                     setActiveWarehouse(w.name);
                     setActiveShelfKey(null);
                   }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                     resolvedWarehouseName === w.name
-                      ? "bg-accent text-paper border-accent"
-                      : "border-line text-ink/70 hover:border-accent/50"
+                      ? "text-ink"
+                      : "text-ink/45 hover:text-ink/70"
                   }`}
                 >
                   {w.name}
-                  <span className="ml-1.5 text-xs opacity-70">
-                    {w.totalQty} units
+                  <span className="ml-1.5 text-xs text-ink/40 tabular-nums">
+                    {w.totalQty}
                   </span>
+                  {resolvedWarehouseName === w.name && (
+                    <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-accent rounded-full" />
+                  )}
                 </button>
               ))}
 
@@ -364,7 +460,7 @@ export default function SellPage() {
                       setActiveShelfKey(null);
                     }
                   }}
-                  className="border border-line rounded-full px-3 py-1.5 text-sm text-ink/70 bg-paper focus:outline-none focus:border-accent transition-colors"
+                  className="ml-1 border-none bg-transparent text-sm text-ink/45 hover:text-ink/70 focus:outline-none cursor-pointer"
                 >
                   <option value="">More warehouses…</option>
                   {otherWarehouses.map((w) => (
@@ -376,17 +472,16 @@ export default function SellPage() {
               )}
             </div>
 
-            {/* Shelf selector */}
+            {/* Shelf filter */}
             {shelfStats.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="eyebrow text-ink/50 mr-1">Shelf</span>
+              <div className="flex flex-wrap items-center gap-2 px-5 py-3 bg-ink/[0.015]">
                 <button
                   type="button"
                   onClick={() => setActiveShelfKey(ALL_SHELVES)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     resolvedShelfKey === ALL_SHELVES
-                      ? "bg-ink text-paper border-ink"
-                      : "border-line text-ink/70 hover:border-ink/40"
+                      ? "bg-ink text-paper"
+                      : "text-ink/55 hover:bg-ink/5"
                   }`}
                 >
                   All shelves
@@ -396,15 +491,15 @@ export default function SellPage() {
                     key={s.key}
                     type="button"
                     onClick={() => setActiveShelfKey(s.key)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                       resolvedShelfKey === s.key
-                        ? "bg-ink text-paper border-ink"
-                        : "border-line text-ink/70 hover:border-ink/40"
+                        ? "bg-ink text-paper"
+                        : "text-ink/55 hover:bg-ink/5"
                     }`}
                   >
                     {s.label}
-                    <span className="ml-1.5 text-xs opacity-70">
-                      {s.totalQty} units
+                    <span className="ml-1 opacity-70 tabular-nums">
+                      {s.totalQty}
                     </span>
                   </button>
                 ))}
@@ -419,7 +514,7 @@ export default function SellPage() {
                     onChange={(e) => {
                       if (e.target.value) setActiveShelfKey(e.target.value);
                     }}
-                    className="border border-line rounded-full px-3 py-1.5 text-sm text-ink/70 bg-paper focus:outline-none focus:border-ink/40 transition-colors"
+                    className="border-none bg-transparent text-xs text-ink/55 hover:text-ink/80 focus:outline-none cursor-pointer"
                   >
                     <option value="">More shelves…</option>
                     {otherShelves.map((s) => (
@@ -436,7 +531,9 @@ export default function SellPage() {
           {/* Product grid */}
           <div className="p-5">
             {displayedProducts.length === 0 ? (
-              <p className="text-ink/60 text-sm">No products found here.</p>
+              <p className="text-sm text-ink/50 text-center py-8">
+                No products found here.
+              </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {displayedProducts.map((product) => (
@@ -452,14 +549,14 @@ export default function SellPage() {
                       }
                       openSellModal(product);
                     }}
-                    className="text-left border border-line rounded-xl p-4 bg-paper hover:border-accent hover:shadow-md transition-all"
+                    className="group text-left border border-line rounded-lg p-4 bg-paper hover:border-accent/50 hover:shadow-sm transition-all"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-ink truncate">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-medium text-ink text-sm leading-snug">
                         {product.name}
                       </span>
                       <span
-                        className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${levelBadgeClass(
+                        className={`shrink-0 px-2 py-0.5 rounded-md text-[11px] font-medium ${levelBadgeClass(
                           product.level
                         )}`}
                       >
@@ -467,23 +564,27 @@ export default function SellPage() {
                       </span>
                     </div>
 
-                    <div className="mt-1 text-xs text-ink/50 truncate">
+                    <div className="mt-1 text-xs text-ink/40 truncate font-mono">
                       {product.path}
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between text-sm">
+                    <div className="mt-3 flex items-center justify-between">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        className={`px-2 py-0.5 rounded-md text-xs font-medium tabular-nums ${
                           product.quantity <= LOW_STOCK_THRESHOLD
                             ? "bg-rust/10 text-rust"
-                            : "bg-ink/5 text-ink/70"
+                            : "bg-ink/5 text-ink/60"
                         }`}
                       >
                         {product.quantity} in stock
                       </span>
-                      <span className="text-accent font-semibold">
+                      <span className="text-accent font-semibold text-sm tabular-nums">
                         {formatMoney(product.price)}
                       </span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-line/70 text-xs font-medium text-ink/0 group-hover:text-accent transition-colors">
+                      Sell this item →
                     </div>
                   </button>
                 ))}
@@ -495,115 +596,149 @@ export default function SellPage() {
 
       {/* Recent sales */}
       <section className="space-y-3">
-        <h2 className="font-display italic text-xl text-ink">Recent Sales</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg text-ink">Recent sales</h2>
+          {sales.length > 0 && (
+            <span className="text-xs text-ink/40">{sales.length} total</span>
+          )}
+        </div>
 
         {sales.length === 0 ? (
-          <p className="text-ink/60 text-sm">No sales yet.</p>
+          <div className="rounded-lg border border-line bg-paper px-4 py-8 text-center text-sm text-ink/50">
+            No sales yet — sales you record will show up here.
+          </div>
         ) : (
-          <div className="rounded-xl border border-line bg-paper shadow-sm overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-line text-left text-ink/50 eyebrow">
-                  <th className="px-4 py-3 font-medium">Product</th>
-                  <th className="px-4 py-3 font-medium text-right">Price</th>
-                  <th className="px-4 py-3 font-medium text-right">Units</th>
-                  <th className="px-4 py-3 font-medium text-right">Subtotal</th>
-                  <th className="px-4 py-3 font-medium text-right">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {sales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-ink/[0.02] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-ink">{sale.productName}</div>
-                      <div className="text-ink/50 text-xs">{sale.warehouseName}</div>
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink/70">
-                      {formatMoney(sale.price)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink/70">
-                      {sale.quantity}
-                    </td>
-                    <td className="px-4 py-3 text-right text-accent font-semibold">
-                      {formatMoney(sale.total)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink/50 text-xs whitespace-nowrap">
-                      {formatTime(sale.soldAt)}
-                    </td>
+          <div className="rounded-lg border border-line bg-paper shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-line text-left text-ink/45 bg-ink/[0.015]">
+                    <th className="px-4 py-2.5 font-medium text-xs">Product</th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Price
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Units
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Subtotal
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Date
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {sales.map((sale) => (
+                    <tr
+                      key={sale.id}
+                      className="hover:bg-ink/[0.015] transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-ink">
+                          {sale.productName}
+                        </div>
+                        <div className="text-ink/40 text-xs mt-0.5">
+                          {sale.warehouseName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-ink/60 tabular-nums">
+                        {formatMoney(sale.price)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-ink/60 tabular-nums">
+                        {sale.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-right text-accent font-semibold tabular-nums">
+                        {formatMoney(sale.total)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-ink/40 text-xs whitespace-nowrap">
+                        {formatTime(sale.soldAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
 
       {/* Sell modal */}
       {selected && (
-        <div className="fixed inset-0 bg-ink/50 backdrop-blur-sm flex items-center justify-center z-20 px-4">
-          <div className="bg-paper rounded-2xl shadow-2xl ring-1 ring-ink/5 max-w-sm w-full p-6 space-y-5">
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-20 px-4">
+          <div className="bg-paper rounded-xl shadow-xl ring-1 ring-ink/5 max-w-sm w-full p-6 space-y-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-display italic text-lg text-ink">
+                <h3 className="font-display text-lg text-ink">
                   {selected.name}
                 </h3>
-                <p className="text-xs text-ink/50 mt-0.5">{selected.path}</p>
+                <p className="text-xs text-ink/40 mt-0.5 font-mono">
+                  {selected.path}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
                 aria-label="Close"
-                className="text-ink/40 hover:text-ink/70 text-lg leading-none"
+                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-ink/40 hover:text-ink hover:bg-ink/5 transition-colors"
               >
                 ×
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-sm text-ink/70 border-y border-line py-3">
-              <span>Available: {selected.quantity}</span>
-              <span>{formatMoney(selected.price)} / unit</span>
+            <div className="flex items-center justify-between text-sm text-ink/60 border-y border-line py-3">
+              <span>
+                Available:{" "}
+                <span className="font-medium text-ink tabular-nums">
+                  {selected.quantity}
+                </span>
+              </span>
+              <span className="tabular-nums">
+                {formatMoney(selected.price)} / unit
+              </span>
             </div>
 
             <div>
-              <label className="text-xs text-ink/60 block mb-1">
+              <label className="text-xs font-medium text-ink/60 block mb-1.5">
                 Quantity to sell
               </label>
-              <input
-                type="number"
-                min={1}
-                max={selected.quantity}
+              <QtyStepper
                 value={sellQty}
-                onChange={(e) => setSellQty(Number(e.target.value))}
-                className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
+                max={selected.quantity}
+                onChange={setSellQty}
               />
             </div>
 
             <div>
-              <label className="text-xs text-ink/60 block mb-1">
+              <label className="text-xs font-medium text-ink/60 block mb-1.5">
                 Sale date &amp; time
               </label>
               <input
                 type="datetime-local"
                 value={sellDate}
                 onChange={(e) => setSellDate(e.target.value)}
-                className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
+                className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors"
               />
             </div>
 
-            <div className="flex items-center justify-between text-sm bg-ink/[0.03] rounded-lg px-3 py-2">
+            <div className="flex items-center justify-between text-sm bg-ink/[0.03] rounded-lg px-3.5 py-2.5">
               <span className="text-ink/60">Total</span>
-              <span className="text-accent font-semibold">
+              <span className="text-accent font-semibold tabular-nums">
                 {formatMoney((sellQty || 0) * selected.price)}
               </span>
             </div>
 
-            {modalError && <p className="text-rust text-xs">{modalError}</p>}
+            {modalError && (
+              <p className="text-rust text-xs bg-rust/5 border border-rust/20 rounded-lg px-3 py-2">
+                {modalError}
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex-1 border border-ink/20 rounded-lg px-3 py-2 text-sm hover:border-ink/40 transition-colors"
+                className="flex-1 border border-line rounded-lg px-3 py-2 text-sm font-medium text-ink/70 hover:bg-ink/5 transition-colors"
               >
                 Cancel
               </button>
