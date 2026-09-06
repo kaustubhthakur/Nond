@@ -566,6 +566,27 @@ exports.getShelfOptions = async (
   });
 };
 
+const validateCostPrice = (costPrice) => {
+  if (
+    costPrice === undefined ||
+    costPrice === null ||
+    costPrice === ""
+  ) {
+    return null;
+  }
+
+  const value = Number(costPrice);
+
+  if (
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return "Cost price must be a valid non-negative number";
+  }
+
+  return null;
+};
+
 exports.addProductToShelf = async (
   req,
   res
@@ -583,6 +604,7 @@ exports.addProductToShelf = async (
       productId,
       logo,
       price,
+      costPrice,
       quantity,
     } = req.body;
 
@@ -619,6 +641,15 @@ exports.addProductToShelf = async (
     if (priceError) {
       return res.status(400).json({
         error: priceError,
+      });
+    }
+
+    const costPriceError =
+      validateCostPrice(costPrice);
+
+    if (costPriceError) {
+      return res.status(400).json({
+        error: costPriceError,
       });
     }
 
@@ -698,6 +729,12 @@ exports.addProductToShelf = async (
               ? String(logo).trim()
               : null,
           price: Number(price),
+          costPrice:
+            costPrice !== undefined &&
+            costPrice !== null &&
+            costPrice !== ""
+              ? Number(costPrice)
+              : null,
           quantity: qty,
         });
     } catch (err) {

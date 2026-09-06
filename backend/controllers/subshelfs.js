@@ -57,6 +57,7 @@ const validateProductInput = (
   sku,
   logo,
   price,
+  costPrice,
   quantity
 ) => {
   if (
@@ -95,6 +96,16 @@ const validateProductInput = (
     price < 0
   ) {
     return "Price must be a non-negative number";
+  }
+
+  if (
+    costPrice !== undefined &&
+    costPrice !== null &&
+    (typeof costPrice !== "number" ||
+      !Number.isFinite(costPrice) ||
+      costPrice < 0)
+  ) {
+    return "Cost price must be a non-negative number";
   }
 
   if (
@@ -711,6 +722,7 @@ exports.addProduct = async (
       sku,
       logo,
       price,
+      costPrice,
       quantity,
     } = req.body;
 
@@ -774,6 +786,7 @@ exports.addProduct = async (
         sku,
         logo,
         price,
+        costPrice,
         quantity
       );
 
@@ -822,6 +835,13 @@ exports.addProduct = async (
                 : null,
 
             price,
+
+            costPrice:
+              costPrice !== undefined &&
+              costPrice !== null
+                ? costPrice
+                : null,
+
             quantity,
           }
         );
