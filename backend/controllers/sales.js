@@ -25,6 +25,7 @@ exports.createSale = async (req, res) => {
       sku,
       price,
       quantity,
+      soldAt, // client-supplied sale date
     } = req.body;
 
     if (!storeId) {
@@ -68,6 +69,16 @@ exports.createSale = async (req, res) => {
       });
     }
 
+    // Validate the client-supplied date; fall back to "now" if missing/invalid
+    let resolvedSoldAt = new Date();
+    if (soldAt) {
+      const parsed = new Date(soldAt);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: "soldAt must be a valid date" });
+      }
+      resolvedSoldAt = parsed;
+    }
+
     const sale = await Sale.createSale({
       storeId,
       warehouseId,
@@ -85,6 +96,7 @@ exports.createSale = async (req, res) => {
       price: numericPrice,
       quantity: numericQuantity,
       soldBy: req.user.username || req.user.id,
+      soldAt: resolvedSoldAt,
     });
 
     return res.status(201).json({
