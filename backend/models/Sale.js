@@ -1,4 +1,5 @@
 const { db } = require("../firebase/index.js");
+const { Timestamp } = require("firebase-admin/firestore");
 
 const getSalesRef = (storeId) => {
   return db
@@ -6,6 +7,21 @@ const getSalesRef = (storeId) => {
     .doc(String(storeId))
     .collection("sales");
 };
+
+// Convert a Firestore Timestamp (or already-a-Date, or string) into an ISO string
+function toIso(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  return value;
+}
+
+function serializeSale(sale) {
+  return {
+    ...sale,
+    soldAt: toIso(sale.soldAt),
+  };
+}
 
 exports.createSale = async ({
   storeId,
@@ -24,10 +40,19 @@ exports.createSale = async ({
   price,
   quantity,
   soldBy,
+  soldAt, // <-- now accepted from the controller
 }) => {
   const salesRef = getSalesRef(storeId);
   const saleRef = salesRef.doc();
-  const now = new Date();
+
+  // Use the caller-supplied date if given and valid, otherwise fall back to now
+  let resolvedSoldAt = new Date();
+  if (soldAt) {
+    const parsed = soldAt instanceof Date ? soldAt : new Date(soldAt);
+    if (!isNaN(parsed.getTime())) {
+      resolvedSoldAt = parsed;
+    }
+  }
 
   const sale = {
     id: saleRef.id,
@@ -48,12 +73,13 @@ exports.createSale = async ({
     quantity: Number(quantity),
     total: Number(price) * Number(quantity),
     soldBy: soldBy || null,
-    soldAt: now,
+    soldAt: Timestamp.fromDate(resolvedSoldAt), // store as a real Firestore Timestamp
   };
 
   await saleRef.set(sale);
 
-  return sale;
+  // Return a JSON-safe version (ISO string) to the controller/frontend
+  return serializeSale(sale);
 };
 
 exports.getSales = async (storeId, limitCount = 100) => {
@@ -62,8 +88,5 @@ exports.getSales = async (storeId, limitCount = 100) => {
     .limit(limitCount)
     .get();
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
+  return snapshot.docs.map((doc) => serializeSale({ id: doc.id, ...doc.data() }));
 };

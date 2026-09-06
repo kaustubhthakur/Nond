@@ -32,7 +32,8 @@ export function getSales(storeId: string, limit = 100) {
 export function recordSale(
   storeId: string,
   product: SellOverviewProduct,
-  quantity: number
+  quantity: number,
+  soldAt: string // ISO string, chosen on the frontend
 ) {
   return apiFetch<{ success: boolean; message: string; sale: Sale }>(
     `/sale/store/${storeId}`,
@@ -53,6 +54,7 @@ export function recordSale(
         sku: product.sku,
         price: product.price,
         quantity,
+        soldAt,
       }),
     }
   );
