@@ -688,17 +688,14 @@ exports.getBoxOptions = async (
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| Product Validation
-|--------------------------------------------------------------------------
-*/
+
 
 const validateProductInput = (
   name,
   sku,
   logo,
   price,
+  costPrice,
   quantity
 ) => {
   if (
@@ -740,6 +737,16 @@ const validateProductInput = (
   }
 
   if (
+    costPrice !== undefined &&
+    costPrice !== null &&
+    (typeof costPrice !== "number" ||
+      !Number.isFinite(costPrice) ||
+      costPrice < 0)
+  ) {
+    return "Cost price must be a non-negative number";
+  }
+
+  if (
     quantity === undefined ||
     quantity === null ||
     typeof quantity !== "number" ||
@@ -753,11 +760,7 @@ const validateProductInput = (
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| Add Product To Box
-|--------------------------------------------------------------------------
-*/
+
 
 exports.addProduct = async (
   req,
@@ -779,6 +782,7 @@ exports.addProduct = async (
       sku,
       logo,
       price,
+      costPrice,
       quantity,
     } = req.body;
 
@@ -845,6 +849,7 @@ exports.addProduct = async (
         sku,
         logo,
         price,
+        costPrice,
         quantity
       );
 
@@ -895,6 +900,12 @@ exports.addProduct = async (
 
             price,
 
+            costPrice:
+              costPrice !== undefined &&
+              costPrice !== null
+                ? costPrice
+                : null,
+
             quantity,
           }
         );
@@ -931,11 +942,6 @@ exports.addProduct = async (
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| Sell Product
-|--------------------------------------------------------------------------
-*/
 
 exports.sellProduct = async (
   req,
@@ -1066,11 +1072,7 @@ exports.sellProduct = async (
 };
 
 
-/*
-|--------------------------------------------------------------------------
-| Get Box Products
-|--------------------------------------------------------------------------
-*/
+
 
 exports.getBoxProducts = async (
   req,
