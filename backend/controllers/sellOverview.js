@@ -27,13 +27,14 @@ function toProductNode(product, { level, warehouse, shelf, subShelf, box }) {
       : "Unnamed product";
 
   return {
-    id: safeId,
-    name: safeName,
-    sku: product.sku || null,
-    logo: product.logo || null,
-    price: product.price,
-    quantity: product.quantity,
-    level,
+   id: safeId,
+  name: safeName,
+  sku: product.sku || null,
+  logo: product.logo || null,
+  price: product.price,
+  costPrice: typeof product.costPrice === "number" ? product.costPrice : null, // ← added
+  quantity: product.quantity,
+  level,
     path: pathParts.filter(Boolean).join(" / "),
     warehouseId: warehouse.id,
     warehouseName: warehouse.name,

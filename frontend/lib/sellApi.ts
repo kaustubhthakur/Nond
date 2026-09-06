@@ -1,11 +1,12 @@
 import { apiFetch } from "./api";
 
 export interface SellOverviewProduct {
-  id: string;
+   id: string;
   name: string;
   sku: string | null;
   logo: string | null;
   price: number;
+  costPrice: number | null; // ← added
   quantity: number;
   level: "shelf" | "subShelf" | "box";
   path: string;

@@ -32,6 +32,11 @@ exports.createSale = async ({ storeId, items, soldBy, soldAt }) => {
   const normalizedItems = items.map((item) => {
     const price = Number(item.price);
     const quantity = Number(item.quantity);
+    const costPrice =
+      typeof item.costPrice === "number" && Number.isFinite(item.costPrice)
+        ? Number(item.costPrice)
+        : null;
+
     return {
       warehouseId: String(item.warehouseId),
       warehouseName: item.warehouseName || null,
@@ -46,13 +51,20 @@ exports.createSale = async ({ storeId, items, soldBy, soldAt }) => {
       productName: item.productName,
       sku: item.sku || null,
       price,
+      costPrice,
       quantity,
       subtotal: price * quantity,
+      profit: costPrice !== null ? (price - costPrice) * quantity : null,
     };
   });
 
   const total = normalizedItems.reduce((sum, i) => sum + i.subtotal, 0);
   const totalUnits = normalizedItems.reduce((sum, i) => sum + i.quantity, 0);
+  const totalProfit = normalizedItems.reduce(
+    (sum, i) => sum + (i.profit ?? 0),
+    0
+  );
+  const profitDataComplete = normalizedItems.every((i) => i.profit !== null);
 
   const sale = {
     id: saleRef.id,
@@ -61,6 +73,8 @@ exports.createSale = async ({ storeId, items, soldBy, soldAt }) => {
     itemCount: normalizedItems.length,
     totalUnits,
     total,
+    totalProfit,
+    profitDataComplete,
     soldBy: soldBy || null,
     soldAt: Timestamp.fromDate(resolvedSoldAt),
   };

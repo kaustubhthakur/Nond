@@ -17,6 +17,8 @@ export interface SaleItem {
   price: number;
   quantity: number;
   subtotal: number;
+  costPrice: number | null;
+  profit: number | null;
 }
 
 export interface Sale {
@@ -28,6 +30,8 @@ export interface Sale {
   total: number;
   soldBy: string | null;
   soldAt: string;
+    totalProfit: number;
+
 }
 
 export interface CartLine {
@@ -63,7 +67,9 @@ export function recordSale(storeId: string, lines: CartLine[], soldAt: string) {
           productName: product.name,
           sku: product.sku,
           price: product.price,
+                 costPrice: product.costPrice,
           quantity,
+
         })),
         soldAt,
       }),
