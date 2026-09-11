@@ -13,6 +13,15 @@ function formatINR(amount: number) {
   }).format(amount);
 }
 
+
+function formatINRCompact(amount: number) {
+  const abs = Math.abs(amount);
+  if (abs >= 1_00_00_000) return `₹${(amount / 1_00_00_000).toFixed(2)} Cr`;
+  if (abs >= 1_00_000) return `₹${(amount / 1_00_000).toFixed(2)} L`;
+  if (abs >= 1_000) return `₹${(amount / 1_000).toFixed(1)}k`;
+  return formatINR(amount);
+}
+
 export function InventoryValuationTable({
   monthly,
   currentMonthLabel,
@@ -24,7 +33,6 @@ export function InventoryValuationTable({
 }) {
   const currentYear = new Date().getFullYear();
 
-  // Fallback to currentYear for entries that don't carry a year yet.
   const withYear = monthly.map((m) => ({
     ...m,
     year: (m as MonthlyValuation & { year?: number }).year ?? currentYear,
@@ -61,7 +69,8 @@ export function InventoryValuationTable({
                 return (
                   <div
                     key={month}
-                    className={`px-3 py-3 text-center ${
+                    title={typeof amount === "number" ? formatINR(amount) : undefined}
+                    className={`px-1.5 py-3 text-center ${
                       isCurrent ? "bg-ink/[0.05]" : "bg-paper"
                     }`}
                   >
@@ -73,7 +82,7 @@ export function InventoryValuationTable({
                       {month}
                     </div>
                     <div
-                      className={`mt-1 font-mono text-sm tabular-nums ${
+                      className={`mt-1 truncate font-mono text-xs tabular-nums leading-tight ${
                         isCurrent
                           ? "font-semibold text-ink"
                           : amount
@@ -81,7 +90,7 @@ export function InventoryValuationTable({
                           : "text-ink/30"
                       }`}
                     >
-                      {typeof amount === "number" ? formatINR(amount) : "-"}
+                      {typeof amount === "number" ? formatINRCompact(amount) : "-"}
                     </div>
                   </div>
                 );
