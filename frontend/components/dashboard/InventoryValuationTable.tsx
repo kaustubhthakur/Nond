@@ -1,5 +1,10 @@
 import type { MonthlyValuation } from "@/types/dashboardStats";
 
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "April", "May", "June",
+  "July", "Aug", "Sept", "Oct", "Nov", "Dec",
+];
+
 function formatINR(amount: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -17,44 +22,73 @@ export function InventoryValuationTable({
   currentMonthLabel: string;
   lastMonthLabel: string;
 }) {
-  const currentIndex = monthly.findIndex((m) => m.month === currentMonthLabel);
-  const current = monthly[currentIndex];
-  const last = monthly[currentIndex - 1];
+  const currentYear = new Date().getFullYear();
 
-  const hasLast = typeof last?.amount === "number" && last.amount > 0;
-  const changePct = hasLast && current
-    ? ((current.amount - last.amount) / last.amount) * 100
-    : null;
+  // Fallback to currentYear for entries that don't carry a year yet.
+  const withYear = monthly.map((m) => ({
+    ...m,
+    year: (m as MonthlyValuation & { year?: number }).year ?? currentYear,
+  }));
+
+  const years = Array.from(new Set(withYear.map((m) => m.year))).sort((a, b) => b - a);
+  if (years.length === 0) years.push(currentYear);
+
+  const getAmount = (year: number, month: string) =>
+    withYear.find((m) => m.year === year && m.month === month)?.amount;
+
+  const current = getAmount(currentYear, currentMonthLabel);
+  const last = getAmount(currentYear, lastMonthLabel);
+  const hasLast = typeof last === "number" && last > 0;
+  const changePct =
+    hasLast && typeof current === "number" ? ((current - last) / last) * 100 : null;
   const isUp = (changePct ?? 0) >= 0;
 
   return (
     <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-      <div className="mb-3 flex items-baseline justify-between">
+      <div className="mb-4 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold text-ink">Total Inventory Valuation</h3>
         <span className="text-xs text-ink/40">Amounts in ₹</span>
       </div>
 
-      <div className="grid grid-cols-6 gap-px overflow-hidden rounded-lg border border-line bg-line text-center text-xs">
-        {monthly.map((m) => {
-          const isCurrent = m.month === currentMonthLabel;
-          return (
-            <div
-              key={m.month}
-              className={`px-2 py-3 ${isCurrent ? "bg-ink/[0.04]" : "bg-paper"}`}
-            >
-              <div className={isCurrent ? "font-semibold text-ink" : "font-medium text-ink/50"}>
-                {m.month}
-              </div>
-              <div
-                className={`mt-1 font-mono tabular-nums ${
-                  isCurrent ? "font-semibold text-ink" : "text-ink/70"
-                }`}
-              >
-                {m.amount ? formatINR(m.amount) : "—"}
-              </div>
+      <div className="space-y-4">
+        {years.map((year) => (
+          <div key={year}>
+            <div className="mb-2 text-xs font-medium text-ink/40">{year}</div>
+            <div className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-line bg-line">
+              {MONTH_LABELS.map((month) => {
+                const amount = getAmount(year, month);
+                const isCurrent = year === currentYear && month === currentMonthLabel;
+                return (
+                  <div
+                    key={month}
+                    className={`px-3 py-3 text-center ${
+                      isCurrent ? "bg-ink/[0.05]" : "bg-paper"
+                    }`}
+                  >
+                    <div
+                      className={`text-xs ${
+                        isCurrent ? "font-semibold text-ink" : "font-medium text-ink/50"
+                      }`}
+                    >
+                      {month}
+                    </div>
+                    <div
+                      className={`mt-1 font-mono text-sm tabular-nums ${
+                        isCurrent
+                          ? "font-semibold text-ink"
+                          : amount
+                          ? "text-ink/70"
+                          : "text-ink/30"
+                      }`}
+                    >
+                      {typeof amount === "number" ? formatINR(amount) : "-"}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-sm">
@@ -62,13 +96,13 @@ export function InventoryValuationTable({
           <div>
             Current Month ({currentMonthLabel}):{" "}
             <span className="font-mono font-semibold tabular-nums text-ink">
-              {current ? formatINR(current.amount) : "—"}
+              {typeof current === "number" ? formatINR(current) : "—"}
             </span>
           </div>
           <div>
             Last Month ({lastMonthLabel}):{" "}
             <span className="font-mono font-semibold tabular-nums text-ink">
-              {hasLast ? formatINR(last.amount) : "—"}
+              {hasLast ? formatINR(last as number) : "—"}
             </span>
           </div>
         </div>
