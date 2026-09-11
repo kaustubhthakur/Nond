@@ -83,7 +83,7 @@ export function recordSale(
       productName: product.name,
       sku: product.sku,
 
-      // Force it to be a real number
+  
       price,
 
       costPrice:
@@ -113,9 +113,7 @@ export function recordSale(
   );
 }
 
-// Old sales (recorded before the items[] migration) have flat fields instead
-// of an items array. Normalize every sale into the new shape so the UI never
-// has to special-case it.
+
 export function normalizeSale(raw: any): Sale {
   if (Array.isArray(raw.items)) {
     const items: SaleItem[] = raw.items.map((item: any) => {
