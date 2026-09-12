@@ -2,6 +2,7 @@ const SubShelf = require("../models/SubShelf");
 const Store = require("../models/Store");
 const Warehouse = require("../models/Warehouse");
 const Shelf = require("../models/Shelf");
+const { logStockMovement } = require("../models/StockMovement");
 
 const MAX_BOXES = 5;
 const MAX_PRODUCTS = 125;
@@ -105,6 +106,22 @@ const validateProductInput = (
     quantity <= 0
   ) {
     return "Quantity must be a positive integer";
+  }
+
+  return null;
+};
+
+const validateSellingPrice = (sellingPrice) => {
+  const value = Number(sellingPrice);
+
+  if (
+    sellingPrice === undefined ||
+    sellingPrice === null ||
+    sellingPrice === "" ||
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return "Selling price must be a valid non-negative number";
   }
 
   return null;
@@ -835,7 +852,8 @@ exports.addProduct = async (
         error: "Sub-shelf not found",
       });
     }
- logStockMovement(null, {
+
+    logStockMovement(null, {
       storeId,
       warehouseId,
       shelfId,
@@ -884,7 +902,7 @@ exports.sellProduct = async (
       productId,
     } = req.params;
 
-    const { quantity } = req.body;
+    const { quantity, sellingPrice } = req.body;
 
     if (
       !storeId ||
@@ -953,6 +971,15 @@ exports.sellProduct = async (
       });
     }
 
+    const sellingPriceError =
+      validateSellingPrice(sellingPrice);
+
+    if (sellingPriceError) {
+      return res.status(400).json({
+        error: sellingPriceError,
+      });
+    }
+
     let result;
 
     try {
@@ -963,7 +990,8 @@ exports.sellProduct = async (
           shelfId,
           subShelfId,
           productId,
-          qty
+          qty,
+          Number(sellingPrice)
         );
     } catch (err) {
       return res.status(409).json({

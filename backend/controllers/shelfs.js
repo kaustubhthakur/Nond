@@ -1,6 +1,7 @@
 const Shelf = require("../models/Shelf");
 const Store = require("../models/Store");
 const Warehouse = require("../models/Warehouse");
+const { logStockMovement } = require("../models/StockMovement");
 
 const MAX_SUBSHELVES = 10;
 const MAX_PRODUCTS = 1250;
@@ -84,6 +85,22 @@ const validatePrice = (price) => {
     value < 0
   ) {
     return "Price must be a valid non-negative number";
+  }
+
+  return null;
+};
+
+const validateSellingPrice = (sellingPrice) => {
+  const value = Number(sellingPrice);
+
+  if (
+    sellingPrice === undefined ||
+    sellingPrice === null ||
+    sellingPrice === "" ||
+    !Number.isFinite(value) ||
+    value < 0
+  ) {
+    return "Selling price must be a valid non-negative number";
   }
 
   return null;
@@ -712,17 +729,18 @@ exports.addProductToShelf = async (
           "Failed to add product to shelf",
       });
     }
- logStockMovement(null, {
+
+    logStockMovement(null, {
       storeId,
       warehouseId,
       shelfId,
-      subShelfId,
-      level: "subShelf",
+      subShelfId: null,
+      level: "shelf",
       productId: product.id,
-      productName: product.name,
+      productName: product.productId,
       sku: product.sku,
       price: product.price,
-      quantity,
+      quantity: qty,
       now: product.createdAt,
     });
 
@@ -937,7 +955,7 @@ exports.sellProductFromShelf = async (
       productId,
     } = req.params;
 
-    const { quantity } = req.body;
+    const { quantity, sellingPrice } = req.body;
 
     if (
       !storeId ||
@@ -958,6 +976,15 @@ exports.sellProductFromShelf = async (
       return res.status(400).json({
         error:
           "Quantity must be a positive integer",
+      });
+    }
+
+    const sellingPriceError =
+      validateSellingPrice(sellingPrice);
+
+    if (sellingPriceError) {
+      return res.status(400).json({
+        error: sellingPriceError,
       });
     }
 
@@ -1005,6 +1032,7 @@ exports.sellProductFromShelf = async (
           shelfId,
           productId,
           quantity: Number(quantity),
+          sellingPrice: Number(sellingPrice),
         });
     } catch (err) {
       return res.status(409).json({

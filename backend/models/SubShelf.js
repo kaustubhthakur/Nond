@@ -1,4 +1,5 @@
 const { db } = require("../firebase/index.js");
+const { recordSale } = require("./Sale");
 
 const MAX_BOXES = 5;
 const MAX_PRODUCTS = 125;
@@ -263,6 +264,9 @@ exports.deleteSubShelf = async (
  * shelf's own productQuantity/availableCapacity in the same
  * transaction, so shelf-level and sub-shelf-level numbers can never
  * drift apart.
+ *
+ * `price` here is the buying/cost price - it's kept on the product
+ * document so sellProduct() below can compute profit later.
  */
 exports.addProduct = async (
   storeId,
@@ -344,7 +348,7 @@ exports.addProduct = async (
       name,
       sku: sku || null,
       logo: logo || null,
-      price: price ?? 0,
+      price: price ?? 0, // buying/cost price
       quantity,
 
       createdAt: now,
@@ -374,10 +378,17 @@ exports.addProduct = async (
  * on a sub-shelf (no box). Mirrors Box.sellProduct but one level
  * shallower — rolls the amount back off the parent shelf too.
  *
+ * `sellingPrice` is the price it was actually sold at (per unit).
+ * The product's stored `price` is treated as its buying/cost price,
+ * so profit = (sellingPrice - costPrice) * quantity. A sale record
+ * is written in the same transaction, capturing costPrice,
+ * sellingPrice, profit, and the bought-at / sold-at timestamps, so
+ * monthly reports can show all of that per item.
+ *
  * If the product's quantity hits 0, the product document is
  * deleted entirely.
  *
- * Returns { id, remainingQuantity, soldQuantity, deleted }.
+ * Returns { id, remainingQuantity, soldQuantity, deleted, profit, sale }.
  */
 exports.sellProduct = async (
   storeId,
@@ -385,7 +396,8 @@ exports.sellProduct = async (
   shelfId,
   subShelfId,
   productId,
-  quantity
+  quantity,
+  sellingPrice
 ) => {
   const subShelfRef = getSubShelfRef(
     storeId,
@@ -477,11 +489,30 @@ exports.sellProduct = async (
       updatedAt: now,
     });
 
+    const sale = recordSale(transaction, {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId: null,
+      level: "subShelf",
+      productId: productRef.id,
+      productName: productData.name,
+      sku: productData.sku,
+      costPrice: productData.price,
+      sellingPrice,
+      quantity,
+      boughtAt: productData.createdAt,
+      soldAt: now,
+    });
+
     return {
       id: productRef.id,
       remainingQuantity: newProductQuantity,
       soldQuantity: quantity,
       deleted: newProductQuantity === 0,
+      profit: sale.items[0].profit,
+      sale,
     };
   });
 };

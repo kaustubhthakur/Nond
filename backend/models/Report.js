@@ -1,11 +1,7 @@
 const { db } = require("../firebase/index.js");
 const { Timestamp } = require("firebase-admin/firestore");
 
-/**
- * Returns [start, end) as JS Dates for a given calendar month.
- * month is 1-12. end is exclusive (first instant of the next month),
- * so it naturally handles 28/29/30/31-day months.
- */
+
 const getMonthRange = (year, month) => {
   const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
   const end = new Date(Date.UTC(year, month, 1, 0, 0, 0));
@@ -17,13 +13,15 @@ const getPreviousMonth = (year, month) => {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
 };
 
-/**
- * Rolls up current live stock: total units available per warehouse, and
- * per shelf within it. Shelf.productQuantity is already the source of
- * truth for a shelf's total (it's kept in sync whether products sit
- * directly on the shelf, on a sub-shelf, or in a box - see subShelf.js /
- * box.js addProduct, which both roll their quantity up onto the shelf).
- */
+
+const toIso = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  return value;
+};
+
+
 const getStoreStockSnapshot = async (storeId) => {
   const warehousesSnap = await db
     .collection("stores")
@@ -131,12 +129,28 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
     const soldAtIso = sale.soldAt.toDate().toISOString();
 
     sale.items.forEach((item) => {
+  
+      const sellingPrice =
+        item.sellingPrice !== undefined && item.sellingPrice !== null
+          ? item.sellingPrice
+          : item.price;
+
+      const hasCostPrice =
+        item.costPrice !== undefined && item.costPrice !== null;
+
       soldItems.push({
-        date: soldAtIso,
+        date: soldAtIso, // kept for backwards compatibility
+        soldAt: item.soldAt ? toIso(item.soldAt) : soldAtIso,
+        boughtAt: toIso(item.boughtAt),
+
         productId: item.productId,
         productName: item.productName,
         sku: item.sku,
-        price: item.price,
+
+        buyingPrice: hasCostPrice ? item.costPrice : null,
+        sellingPrice,
+        price: sellingPrice, // kept for backwards compatibility
+
         quantity: item.quantity,
         subtotal: item.subtotal,
         profit: item.profit,
@@ -148,6 +162,10 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       if (item.profit !== null && item.profit !== undefined) {
         totalProfit += item.profit;
       } else {
+        profitDataComplete = false;
+      }
+
+      if (!hasCostPrice) {
         profitDataComplete = false;
       }
     });
@@ -166,7 +184,7 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       ? 100
       : 0;
 
-  // ---- Purchases side (units bought, cost) ----
+  // ---- Purchases side (units bought, cost, date & time bought) ----
   const boughtItems = [];
   let totalPurchaseCost = 0;
   let totalUnitsBought = 0;
@@ -179,17 +197,16 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       return;
     }
 
-    const createdAtIso =
-      typeof m.createdAt.toDate === "function"
-        ? m.createdAt.toDate().toISOString()
-        : m.createdAt;
+    const createdAtIso = toIso(m.createdAt);
 
     boughtItems.push({
       date: createdAtIso,
+      boughtAt: createdAtIso,
       productId: m.productId,
       productName: m.productName,
       sku: m.sku,
-      price: m.price,
+      buyingPrice: m.price,
+      price: m.price, // kept for backwards compatibility
       quantity: m.quantity,
       totalCost: m.totalCost,
       level: m.level,

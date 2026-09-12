@@ -2,8 +2,12 @@ const { db } = require("../firebase/index.js");
 const { Timestamp } = require("firebase-admin/firestore");
 
 const getSalesRef = (storeId) => {
-  return db.collection("stores").doc(String(storeId)).collection("sales");
+  return db
+    .collection("stores")
+    .doc(String(storeId))
+    .collection("sales");
 };
+ 
 
 function toIso(value) {
   if (!value) return null;
@@ -18,7 +22,79 @@ function serializeSale(sale) {
     soldAt: toIso(sale.soldAt),
   };
 }
-
+exports.recordSale = (
+  transaction,
+  {
+    storeId,
+    warehouseId,
+    shelfId,
+    subShelfId,
+    boxId,
+    level,
+    productId,
+    productName,
+    sku,
+    costPrice,
+    sellingPrice,
+    quantity,
+    boughtAt,
+    soldAt,
+  }
+) => {
+  const salesRef = getSalesRef(storeId);
+  const saleRef = salesRef.doc();
+ 
+  const cost = Number(costPrice) || 0;
+  const sell = Number(sellingPrice) || 0;
+ 
+  const subtotal = sell * quantity;
+  const profit = (sell - cost) * quantity;
+ 
+  const soldAtDate = soldAt || new Date();
+ 
+  const sale = {
+    id: saleRef.id,
+    storeId: String(storeId),
+ 
+    soldAt: soldAtDate,
+    total: subtotal,
+ 
+    items: [
+      {
+        productId: productId || null,
+        productName: productName || null,
+        sku: sku || null,
+ 
+        warehouseId: warehouseId ? String(warehouseId) : null,
+        shelfId: shelfId ? String(shelfId) : null,
+        subShelfId: subShelfId ? String(subShelfId) : null,
+        boxId: boxId ? String(boxId) : null,
+        level,
+ 
+        costPrice: cost,
+        sellingPrice: sell,
+       
+        price: sell,
+ 
+        quantity,
+        subtotal,
+        profit,
+ 
+        boughtAt: boughtAt || null,
+        soldAt: soldAtDate,
+      },
+    ],
+  };
+ 
+  if (transaction) {
+    transaction.set(saleRef, sale);
+  } else {
+    saleRef.set(sale);
+  }
+ 
+  return sale;
+};
+ 
 exports.createSale = async ({ storeId, items, soldBy, soldAt }) => {
   const salesRef = getSalesRef(storeId);
   const saleRef = salesRef.doc();

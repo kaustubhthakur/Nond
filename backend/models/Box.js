@@ -1,4 +1,5 @@
 const { db } = require("../firebase/index.js");
+const { recordSale } = require("./Sale");
 
 const MAX_PRODUCTS = 25;
 
@@ -472,7 +473,7 @@ exports.addProduct = async (
       name,
       sku: sku || null,
       logo: logo || null,
-      price: price ?? 0,
+      price: price ?? 0, // buying/cost price
       quantity,
 
       createdAt: now,
@@ -514,6 +515,15 @@ exports.addProduct = async (
   });
 };
 
+/**
+ * `sellingPrice` is the price it was actually sold at (per unit).
+ * The product's stored `price` is its buying/cost price, so
+ * profit = (sellingPrice - costPrice) * quantity. A sale record is
+ * written in the same transaction capturing costPrice, sellingPrice,
+ * profit, and the bought-at / sold-at timestamps.
+ *
+ * Returns { id, remainingQuantity, soldQuantity, deleted, profit, sale }.
+ */
 exports.sellProduct = async (
   storeId,
   warehouseId,
@@ -521,7 +531,8 @@ exports.sellProduct = async (
   subShelfId,
   boxId,
   productId,
-  quantity
+  quantity,
+  sellingPrice
 ) => {
   const boxRef = getBoxRef(
     storeId,
@@ -678,6 +689,23 @@ exports.sellProduct = async (
       updatedAt: now,
     });
 
+    const sale = recordSale(transaction, {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+      level: "box",
+      productId: productRef.id,
+      productName: productData.name,
+      sku: productData.sku,
+      costPrice: productData.price,
+      sellingPrice,
+      quantity,
+      boughtAt: productData.createdAt,
+      soldAt: now,
+    });
+
     return {
       id: productRef.id,
       remainingQuantity:
@@ -685,6 +713,8 @@ exports.sellProduct = async (
       soldQuantity: quantity,
       deleted:
         newProductQuantity === 0,
+      profit: sale.items[0].profit,
+      sale,
     };
   });
 };

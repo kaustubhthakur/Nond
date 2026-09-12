@@ -96,17 +96,29 @@ const formatDate = (iso) => {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-function drawTableHeader(doc, x, y, columns) {
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#000000");
+const formatDateTime = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+function drawTableHeader(doc, x, y, columns, fontSize = 9) {
+  doc.font("Helvetica-Bold").fontSize(fontSize).fillColor("#000000");
   columns.forEach((col) => {
     doc.text(col.label, x + col.x, y, { width: col.width, align: col.align || "left" });
   });
   const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
   doc.moveTo(x, y + 14).lineTo(x + totalWidth, y + 14).stroke();
-  doc.font("Helvetica").fontSize(9);
+  doc.font("Helvetica").fontSize(fontSize);
 }
 
-function drawTableRow(doc, x, y, columns, row) {
+function drawTableRow(doc, x, y, columns, row, fontSize = 9) {
+  doc.font("Helvetica").fontSize(fontSize);
   columns.forEach((col) => {
     doc.text(String(row[col.key] ?? "-"), x + col.x, y, { width: col.width, align: col.align || "left" });
   });
@@ -210,10 +222,10 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     doc.moveDown(0.5);
 
     const purchaseColumns = [
-      { key: "date", label: "Date", x: 0, width: 80 },
-      { key: "productName", label: "Product", x: 80, width: 150 },
-      { key: "price", label: "Price", x: 230, width: 70, align: "right" },
-      { key: "quantity", label: "Units", x: 300, width: 60, align: "right" },
+      { key: "date", label: "Bought On", x: 0, width: 80 },
+      { key: "productName", label: "Product", x: 80, width: 145 },
+      { key: "buyingPrice", label: "Buying Price", x: 225, width: 80, align: "right" },
+      { key: "quantity", label: "Units", x: 305, width: 55, align: "right" },
       { key: "totalCost", label: "Total Cost", x: 360, width: 90, align: "right" },
     ];
 
@@ -235,9 +247,9 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
         }
 
         drawTableRow(doc, left, rowY, purchaseColumns, {
-          date: formatDate(item.date),
+          date: formatDate(item.boughtAt || item.date),
           productName: item.productName,
-          price: formatCurrency(item.price),
+          buyingPrice: formatCurrency(item.buyingPrice ?? item.price),
           quantity: item.quantity,
           totalCost: formatCurrency(item.totalCost),
         });
@@ -255,13 +267,17 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     doc.font("Helvetica-Bold").fontSize(13).text("Products Sold");
     doc.moveDown(0.5);
 
+    const saleFontSize = 8;
+
     const saleColumns = [
-      { key: "date", label: "Date", x: 0, width: 70 },
-      { key: "productName", label: "Product", x: 70, width: 130 },
-      { key: "price", label: "Price", x: 200, width: 60, align: "right" },
-      { key: "quantity", label: "Units", x: 260, width: 50, align: "right" },
-      { key: "subtotal", label: "Subtotal", x: 310, width: 70, align: "right" },
-      { key: "profit", label: "Profit", x: 380, width: 70, align: "right" },
+      { key: "soldOn", label: "Sold On", x: 0, width: 60 },
+      { key: "boughtOn", label: "Bought On", x: 60, width: 60 },
+      { key: "productName", label: "Product", x: 120, width: 100 },
+      { key: "buyingPrice", label: "Buy Price", x: 220, width: 55, align: "right" },
+      { key: "sellingPrice", label: "Sell Price", x: 275, width: 55, align: "right" },
+      { key: "quantity", label: "Units", x: 330, width: 35, align: "right" },
+      { key: "subtotal", label: "Subtotal", x: 365, width: 65, align: "right" },
+      { key: "profit", label: "Profit", x: 430, width: 65, align: "right" },
     ];
 
     if (report.sales.items.length === 0) {
@@ -269,29 +285,34 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
       doc.fillColor("#000000");
     } else {
       let rowY = doc.y;
-      drawTableHeader(doc, left, rowY, saleColumns);
-      rowY += 20;
+      drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
+      rowY += 18;
 
       report.sales.items.forEach((item) => {
         if (rowY > bottomLimit - 40) {
           doc.addPage();
           rowY = doc.page.margins.top;
-          drawTableHeader(doc, left, rowY, saleColumns);
-          rowY += 20;
+          drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
+          rowY += 18;
         }
 
         drawTableRow(doc, left, rowY, saleColumns, {
-          date: formatDate(item.date),
+          soldOn: formatDateTime(item.soldAt || item.date),
+          boughtOn: formatDateTime(item.boughtAt),
           productName: item.productName,
-          price: formatCurrency(item.price),
+          buyingPrice:
+            item.buyingPrice !== null && item.buyingPrice !== undefined
+              ? formatCurrency(item.buyingPrice)
+              : "-",
+          sellingPrice: formatCurrency(item.sellingPrice ?? item.price),
           quantity: item.quantity,
           subtotal: formatCurrency(item.subtotal),
           profit:
             item.profit !== null && item.profit !== undefined
               ? formatCurrency(item.profit)
               : "-",
-        });
-        rowY += 18;
+        }, saleFontSize);
+        rowY += 16;
       });
 
       doc.y = rowY + 10;
