@@ -171,14 +171,14 @@ export function Navbar() {
                 href="/warehouses"
                 className={navLinkClass(pathname.startsWith("/warehouses"))}
               >
-                Purchase Entry
+                Purchase 
               </Link>
 
               <Link
                 href="/sell"
                 className={navLinkClass(pathname.startsWith("/sell"))}
               >
-                Sell Entry
+                Sell 
               </Link>
 
               <Link
