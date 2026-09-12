@@ -15,8 +15,8 @@ function currentYearMonth() {
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
 
-function formatCurrency(value: number) {
-  return `₹${value.toFixed(2)}`;
+function formatCurrency(value: number | null | undefined) {
+  return `₹${(value ?? 0).toFixed(2)}`;
 }
 
 function formatDate(iso: string) {

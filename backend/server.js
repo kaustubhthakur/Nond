@@ -46,7 +46,7 @@ app.use("/box", boxRouter);
 app.use("/search", searchRouter);
 app.use("/sale", saleRouter);
 app.use("/sell-overview", sellOverviewRouter);
-app.use("/report",reportRouter)
+app.use(reportRouter)
 
 const server = http.createServer(app);
 

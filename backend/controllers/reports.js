@@ -1,5 +1,7 @@
 const PDFDocument = require("pdfkit");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 const Report = require("../models/Report");
 const Store = require("../models/Store");
@@ -60,18 +62,28 @@ exports.getMonthlyReport = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// PDF export
+// ---------------------------------------------------------------------------
 
 async function fetchLogoBuffer(logoUrl) {
   if (!logoUrl) return null;
 
   try {
-    const response = await axios.get(logoUrl, {
-      responseType: "arraybuffer",
-      timeout: 8000,
-    });
-    return Buffer.from(response.data);
+    if (/^https?:\/\//i.test(logoUrl)) {
+      const response = await axios.get(logoUrl, {
+        responseType: "arraybuffer",
+        timeout: 8000,
+      });
+      return Buffer.from(response.data);
+    }
+
+    // Relative path served by express.static (e.g. "/uploads/store-logos/xxx.jpg").
+    // Read it straight off disk instead of round-tripping over HTTP to ourselves.
+    const localPath = path.join(__dirname, "..", logoUrl);
+    return await fs.promises.readFile(localPath);
   } catch (err) {
-    console.error("Failed to fetch store logo:", err.message);
+    console.error("Failed to load store logo:", err.message);
     return null;
   }
 }
@@ -124,10 +136,11 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     const report = await Report.generateMonthlyReport({ storeId, year: y, month: m });
 
-    const logoBuffer = await fetchLogoBuffer(store.logoUrl || store.logo);
+    // Adjust these field names if your Store model differs.
+    const logoBuffer = await fetchLogoBuffer(store.logo_url);
 
     const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`;
-    const safeStoreName = (store.name || "store").replace(/[^a-z0-9]/gi, "_");
+    const safeStoreName = (store.store_name || "store").replace(/[^a-z0-9]/gi, "_");
     const fileName = `${safeStoreName}_report_${y}_${String(m).padStart(2, "0")}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
@@ -152,7 +165,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
       }
     }
 
-    doc.font("Helvetica-Bold").fontSize(18).text(store.name || "Store", textX, headerY);
+    doc.font("Helvetica-Bold").fontSize(18).text(store.store_name || "Store", textX, headerY);
     doc
       .font("Helvetica")
       .fontSize(11)
@@ -192,7 +205,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     doc.moveDown(1.5);
 
-    
+    // ---- Purchases table ----
     doc.font("Helvetica-Bold").fontSize(13).text("Products Purchased");
     doc.moveDown(0.5);
 
@@ -234,7 +247,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
       doc.y = rowY + 10;
     }
 
-   
+    // ---- Sales table ----
     if (doc.y > bottomLimit - 100) {
       doc.addPage();
     }
@@ -284,7 +297,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
       doc.y = rowY + 10;
     }
 
-   
+    // ---- Footer ----
     doc.moveDown(2);
     doc
       .font("Helvetica-Oblique")

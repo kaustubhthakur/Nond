@@ -1,7 +1,11 @@
 const { db } = require("../firebase/index.js");
 const { Timestamp } = require("firebase-admin/firestore");
 
-
+/**
+ * Returns [start, end) as JS Dates for a given calendar month.
+ * month is 1-12. end is exclusive (first instant of the next month),
+ * so it naturally handles 28/29/30/31-day months.
+ */
 const getMonthRange = (year, month) => {
   const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
   const end = new Date(Date.UTC(year, month, 1, 0, 0, 0));
@@ -13,7 +17,13 @@ const getPreviousMonth = (year, month) => {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 };
 };
 
-
+/**
+ * Rolls up current live stock: total units available per warehouse, and
+ * per shelf within it. Shelf.productQuantity is already the source of
+ * truth for a shelf's total (it's kept in sync whether products sit
+ * directly on the shelf, on a sub-shelf, or in a box - see subShelf.js /
+ * box.js addProduct, which both roll their quantity up onto the shelf).
+ */
 const getStoreStockSnapshot = async (storeId) => {
   const warehousesSnap = await db
     .collection("stores")
@@ -98,7 +108,7 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       getStoreStockSnapshot(storeId),
     ]);
 
-
+  // ---- Sales side (units sold, revenue, profit) ----
   const soldItems = [];
   let totalRevenue = 0;
   let totalProfit = 0;
@@ -107,6 +117,17 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
 
   salesSnap.docs.forEach((doc) => {
     const sale = doc.data();
+
+    if (!sale.soldAt || typeof sale.soldAt.toDate !== "function") {
+      console.warn(`Sale ${doc.id} is missing a valid soldAt timestamp — skipping`);
+      return;
+    }
+
+    if (!Array.isArray(sale.items)) {
+      console.warn(`Sale ${doc.id} has no items array — skipping`);
+      return;
+    }
+
     const soldAtIso = sale.soldAt.toDate().toISOString();
 
     sale.items.forEach((item) => {
@@ -132,7 +153,7 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
     });
   });
 
-
+  // ---- Previous month revenue, for % growth ----
   let prevRevenue = 0;
   prevSalesSnap.docs.forEach((doc) => {
     prevRevenue += doc.data().total || 0;
@@ -145,16 +166,23 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       ? 100
       : 0;
 
-
+  // ---- Purchases side (units bought, cost) ----
   const boughtItems = [];
   let totalPurchaseCost = 0;
   let totalUnitsBought = 0;
 
   movementsSnap.docs.forEach((doc) => {
     const m = doc.data();
-    const createdAtIso = m.createdAt.toDate
-      ? m.createdAt.toDate().toISOString()
-      : m.createdAt;
+
+    if (!m.createdAt) {
+      console.warn(`Stock movement ${doc.id} is missing createdAt — skipping`);
+      return;
+    }
+
+    const createdAtIso =
+      typeof m.createdAt.toDate === "function"
+        ? m.createdAt.toDate().toISOString()
+        : m.createdAt;
 
     boughtItems.push({
       date: createdAtIso,
@@ -190,14 +218,14 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       totalUnitsSold,
       totalRevenue,
       totalProfit,
-      profitDataComplete,
+      profitDataComplete, // false if any sale item had no costPrice recorded
     },
     growth: {
       previousMonthRevenue: prevRevenue,
       currentMonthRevenue: totalRevenue,
       growthPercent: Number(growthPercent.toFixed(2)),
     },
-    stock: stockSnapshot, 
+    stock: stockSnapshot, // current snapshot, not historical to end-of-month
     generatedAt: new Date().toISOString(),
   };
 };
