@@ -15,7 +15,7 @@ const searchRouter = require("./routes/search");
 const boxRouter = require("./routes/box");
 const saleRouter = require("./routes/sales");
 const sellOverviewRouter = require("./routes/sellOverview");
-
+const reportRouter = require('./routes/reports')
 const path = require("path");
 const PORT = process.env.PORT || 8081;
 console.log("CWD:", process.cwd());
@@ -46,7 +46,7 @@ app.use("/box", boxRouter);
 app.use("/search", searchRouter);
 app.use("/sale", saleRouter);
 app.use("/sell-overview", sellOverviewRouter);
-
+app.use("/report",reportRouter)
 
 const server = http.createServer(app);
 
