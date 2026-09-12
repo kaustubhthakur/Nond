@@ -691,7 +691,6 @@ exports.deleteSubShelf = async (
   }
 };
 
-// Add a product directly onto a sub-shelf (no box).
 exports.addProduct = async (
   req,
   res
@@ -836,6 +835,19 @@ exports.addProduct = async (
         error: "Sub-shelf not found",
       });
     }
+ logStockMovement(null, {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      level: "subShelf",
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      price: product.price,
+      quantity,
+      now: product.createdAt,
+    });
 
     return res.status(201).json({
       success: true,
@@ -857,7 +869,6 @@ exports.addProduct = async (
   }
 };
 
-// Subtract stock from a product on this sub-shelf — e.g. when it's sold.
 exports.sellProduct = async (
   req,
   res

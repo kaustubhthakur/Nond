@@ -712,6 +712,19 @@ exports.addProductToShelf = async (
           "Failed to add product to shelf",
       });
     }
+ logStockMovement(null, {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      level: "subShelf",
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      price: product.price,
+      quantity,
+      now: product.createdAt,
+    });
 
     return res.status(201).json({
       success: true,

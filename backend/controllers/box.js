@@ -900,6 +900,20 @@ exports.addProduct = async (
         error: "Box not found",
       });
     }
+   logStockMovement(null, {
+      storeId,
+      warehouseId,
+      shelfId,
+      subShelfId,
+      boxId,
+      level: "box",
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      price: product.price,
+      quantity,
+      now: product.createdAt,
+    });
 
     return res.status(201).json({
       success: true,
