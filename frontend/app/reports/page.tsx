@@ -16,7 +16,10 @@ function currentYearMonth() {
 }
 
 function formatCurrency(value: number | null | undefined) {
-  return `₹${(value ?? 0).toFixed(2)}`;
+  return `₹${(value ?? 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function formatDate(iso: string) {
@@ -27,12 +30,12 @@ function formatDate(iso: string) {
   });
 }
 
-// Mirrors the sanitizing the backend does on store_name, so the filename the
-// user sees matches what the server would have sent even if the
-// Content-Disposition header isn't readable (see reportApi.ts).
+
 function safeFileNamePart(value: string) {
   return value.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
 }
+
+type Column = { label: string; align?: "left" | "right" };
 
 export default function ReportsPage() {
   const { store } = useStore();
@@ -88,98 +91,148 @@ export default function ReportsPage() {
     );
   }
 
+  const growth = report?.growth.growthPercent ?? 0;
+  const growthTone = growth > 0 ? "text-emerald-700" : growth < 0 ? "text-rust" : "text-ink/50";
+  const growthArrow = growth > 0 ? "↑" : growth < 0 ? "↓" : "→";
+  const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-10">
       <div>
         <h1 className="font-display italic text-2xl text-ink">Reports</h1>
         <p className="text-ink/60 text-sm mt-1">
-          View or download {store.store_name}&apos;s monthly performance.
+          See how {store.store_name} performed each month, or download a full PDF report.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="eyebrow text-ink/50">Month</label>
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="border border-line bg-paper px-3 py-2 text-sm"
-          >
-            {MONTH_NAMES.map((name, idx) => (
-              <option key={name} value={idx + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
+      <div className="flex flex-wrap items-end justify-between gap-4 border-t border-b border-line py-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="report-month" className="eyebrow text-ink/50">
+              Month
+            </label>
+            <select
+              id="report-month"
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              {MONTH_NAMES.map((name, idx) => (
+                <option key={name} value={idx + 1}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="report-year" className="eyebrow text-ink/50">
+              Year
+            </label>
+            <select
+              id="report-year"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="eyebrow text-ink/50">Year</label>
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="border border-line bg-paper px-3 py-2 text-sm"
+        <div className="flex items-end gap-3">
+          <button
+            type="button"
+            onClick={loadReport}
+            disabled={loading}
+            className="inline-flex items-center gap-2 bg-ink text-paper px-4 py-2 text-sm hover:bg-ink/90 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+            {loading && <Spinner className="text-paper" />}
+            {loading ? "Loading…" : "View report"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-2 border border-accent/40 text-accent px-4 py-2 text-sm hover:border-accent transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            {downloading ? <Spinner className="text-accent" /> : <DownloadIcon />}
+            {downloading ? "Preparing PDF…" : "Download PDF"}
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={loadReport}
-          disabled={loading}
-          className="eyebrow border border-ink/20 px-4 py-2 hover:border-accent hover:text-accent transition-colors disabled:opacity-50"
-        >
-          {loading ? "Loading…" : "View report"}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={downloading}
-          className="eyebrow border border-accent/40 text-accent px-4 py-2 hover:border-accent transition-colors disabled:opacity-50"
-        >
-          {downloading ? "Preparing PDF…" : "Download PDF"}
-        </button>
       </div>
 
-      {error && <p className="text-rust text-sm">{error}</p>}
+      {error && (
+        <div className="border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
+          {error}
+        </div>
+      )}
+
+      {loading && !report && <ReportSkeleton />}
+
+      {!loading && !report && !error && (
+        <p className="text-ink/50 text-sm italic">
+          Choose a month and year, then select "View report" to see the numbers.
+        </p>
+      )}
 
       {report && (
-        <div className="space-y-8">
-          <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <SummaryCard label="Units purchased" value={report.purchases.totalUnitsBought} />
-            <SummaryCard label="Purchase cost" value={formatCurrency(report.purchases.totalPurchaseCost)} />
-            <SummaryCard label="Units sold" value={report.sales.totalUnitsSold} />
-            <SummaryCard label="Revenue" value={formatCurrency(report.sales.totalRevenue)} />
-            <SummaryCard
-              label="Profit"
-              value={formatCurrency(report.sales.totalProfit)}
-              hint={!report.sales.profitDataComplete ? "Some cost data missing" : undefined}
-            />
-            <SummaryCard
-              label="Growth vs last month"
-              value={`${report.growth.growthPercent >= 0 ? "+" : ""}${report.growth.growthPercent}%`}
-            />
-            <SummaryCard label="Stock available" value={`${report.stock.totalUnitsAvailable} units`} />
+        <div className="space-y-10">
+          <section>
+            <p className="eyebrow text-ink/50">{monthLabel}</p>
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
+              <span className="font-display italic text-4xl sm:text-5xl text-ink tabular-nums">
+                {formatCurrency(report.sales.totalRevenue)}
+              </span>
+              <span className="text-ink/50 text-sm">total revenue</span>
+              <span className={`text-sm font-medium tabular-nums ${growthTone}`}>
+                {growthArrow} {growth >= 0 ? "+" : ""}
+                {growth}% vs last month
+              </span>
+            </div>
+
+            <dl className="mt-6 flex flex-wrap divide-x divide-line border-t border-line pt-4">
+              <LedgerItem label="Units purchased" value={report.purchases.totalUnitsBought.toLocaleString("en-IN")} />
+              <LedgerItem label="Purchase cost" value={formatCurrency(report.purchases.totalPurchaseCost)} />
+              <LedgerItem label="Units sold" value={report.sales.totalUnitsSold.toLocaleString("en-IN")} />
+              <LedgerItem
+                label="Profit"
+                value={
+                  report.sales.profitDataComplete
+                    ? formatCurrency(report.sales.totalProfit)
+                    : `${formatCurrency(report.sales.totalProfit)}*`
+                }
+              />
+              <LedgerItem label="Stock available" value={`${report.stock.totalUnitsAvailable.toLocaleString("en-IN")} units`} />
+            </dl>
+            {!report.sales.profitDataComplete && (
+              <p className="text-xs text-ink/40 mt-2">* Based on partial cost data for this period.</p>
+            )}
           </section>
 
           <section>
             <h2 className="font-display italic text-lg text-ink mb-3">Products Purchased</h2>
             {report.purchases.items.length === 0 ? (
-              <p className="text-ink/50 text-sm">No purchases recorded this month.</p>
+              <EmptyState message="No purchases recorded this month." />
             ) : (
               <ReportTable
-                columns={["Date", "Product", "Price", "Units", "Total cost"]}
+                columns={[
+                  { label: "Date" },
+                  { label: "Product" },
+                  { label: "Price", align: "right" },
+                  { label: "Units", align: "right" },
+                  { label: "Total cost", align: "right" },
+                ]}
                 rows={report.purchases.items.map((item) => [
                   formatDate(item.date),
                   item.productName,
                   formatCurrency(item.price),
-                  String(item.quantity),
+                  item.quantity.toLocaleString("en-IN"),
                   formatCurrency(item.totalCost),
                 ])}
               />
@@ -189,17 +242,32 @@ export default function ReportsPage() {
           <section>
             <h2 className="font-display italic text-lg text-ink mb-3">Products Sold</h2>
             {report.sales.items.length === 0 ? (
-              <p className="text-ink/50 text-sm">No sales recorded this month.</p>
+              <EmptyState message="No sales recorded this month." />
             ) : (
               <ReportTable
-                columns={["Date", "Product", "Price", "Units", "Subtotal", "Profit"]}
+                columns={[
+                  { label: "Date" },
+                  { label: "Product" },
+                  { label: "Price", align: "right" },
+                  { label: "Units", align: "right" },
+                  { label: "Subtotal", align: "right" },
+                  { label: "Profit", align: "right" },
+                ]}
                 rows={report.sales.items.map((item) => [
                   formatDate(item.date),
                   item.productName,
                   formatCurrency(item.price),
-                  String(item.quantity),
+                  item.quantity.toLocaleString("en-IN"),
                   formatCurrency(item.subtotal),
                   item.profit !== null ? formatCurrency(item.profit) : "-",
+                ])}
+                cellTone={report.sales.items.map((item) => [
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  item.profit !== null && item.profit < 0 ? "text-rust" : undefined,
                 ])}
               />
             )}
@@ -210,42 +278,105 @@ export default function ReportsPage() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-}) {
+function LedgerItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-line p-4">
-      <p className="eyebrow text-ink/50">{label}</p>
-      <p className="text-xl font-display text-ink mt-1">{value}</p>
-      {hint && <p className="text-xs text-rust mt-1">{hint}</p>}
+    <div className="px-4 first:pl-0 py-1">
+      <p className="text-xs text-ink/50">{label}</p>
+      <p className="text-base text-ink mt-0.5 tabular-nums">{value}</p>
     </div>
   );
 }
 
-function ReportTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
+function EmptyState({ message }: { message: string }) {
   return (
-    <div className="overflow-x-auto border border-line">
-      <table className="w-full text-sm">
+    <div className="border border-dashed border-line px-4 py-6 text-center text-ink/50 text-sm italic">
+      {message}
+    </div>
+  );
+}
+
+function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 1.5v8.25m0 0L4.75 6.5M8 9.75l3.25-3.25M2.5 12v1.5a1 1 0 001 1h9a1 1 0 001-1V12"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ReportSkeleton() {
+  return (
+    <div className="space-y-10 animate-pulse" aria-hidden="true">
+      <div className="space-y-4">
+        <div className="h-3 w-24 bg-ink/10" />
+        <div className="h-10 w-64 bg-ink/10" />
+        <div className="flex gap-6 border-t border-line pt-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-2.5 w-16 bg-ink/10" />
+              <div className="h-4 w-20 bg-ink/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 w-40 bg-ink/10" />
+        <div className="h-32 w-full bg-ink/5" />
+      </div>
+    </div>
+  );
+}
+
+function ReportTable({
+  columns,
+  rows,
+  cellTone,
+}: {
+  columns: Column[];
+  rows: string[][];
+  cellTone?: (string | undefined)[][];
+}) {
+  return (
+    <div className="border border-line max-h-[420px] overflow-auto">
+      <table className="w-full min-w-[560px] text-sm tabular-nums">
         <thead>
-          <tr className="border-b border-line text-left text-ink/50 eyebrow">
+          <tr className="text-left text-ink/50">
             {columns.map((col) => (
-              <th key={col} className="px-3 py-2 font-normal">
-                {col}
+              <th
+                key={col.label}
+                className={`sticky top-0 z-10 bg-paper px-3 py-2 font-normal text-xs border-b border-line ${
+                  col.align === "right" ? "text-right" : "text-left"
+                }`}
+              >
+                {col.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, idx) => (
-            <tr key={idx} className="border-b border-line/50 last:border-0">
+            <tr key={idx} className={idx % 2 === 1 ? "bg-ink/[0.03]" : undefined}>
               {row.map((cell, i) => (
-                <td key={i} className="px-3 py-2 text-ink/80">
+                <td
+                  key={i}
+                  className={`px-3 py-2 border-b border-line/50 last:border-0 ${
+                    columns[i]?.align === "right" ? "text-right" : "text-left"
+                  } ${cellTone?.[idx]?.[i] ?? "text-ink/80"}`}
+                >
                   {cell}
                 </td>
               ))}
