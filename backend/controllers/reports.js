@@ -107,9 +107,7 @@ async function fetchLogoBuffer(logoUrl) {
   }
 }
 
-// Decimals default to 0: every value in this business is a round rupee amount,
-// and keeping ".00" on every number was a big part of why cells overflowed.
-// Pass { decimals: 2 } explicitly if a caller ever needs paise precision.
+
 const formatCurrency = (value, { decimals = 0 } = {}) =>
   `Rs. ${(Number(value) || 0).toLocaleString("en-IN", {
     minimumFractionDigits: decimals,
@@ -178,9 +176,7 @@ function drawTableRow(doc, x, y, columns, row, { fontSize = 9, striped = false, 
   columns.forEach((col) => {
     const cellColor = (textColorKey && row[`${col.key}Color`]) || null;
     doc.fillColor(cellColor || colors.text);
-    // width + height + ellipsis keeps every cell to a single line: if a value is
-    // still too long for its column it gets truncated with "…" instead of the
-    // mid-number hard-wrap that was breaking row layout before.
+
     doc.text(String(row[col.key] ?? "-"), x + col.x + 6, y + 4, {
       width: col.width - 10,
       height: rowHeight - 6,
@@ -216,8 +212,7 @@ function drawTotalsRow(doc, x, y, columns, totals, fontSize = 9) {
 }
 
 
-// Shrinks the value font (down to a floor) until it fits the card's width,
-// instead of letting PDFKit hard-wrap a long currency figure mid-digit.
+
 function fitSingleLineFontSize(doc, text, font, maxWidth, startSize, minSize = 9) {
   doc.font(font);
   let size = startSize;
@@ -375,9 +370,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const logoBuffer = await fetchLogoBuffer(store.logo_url);
 
     const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`;
-    // Collapse any run of non-alphanumeric characters (spaces, punctuation) into a
-    // single underscore, and trim leading/trailing underscores, so "Sheryu Electronics"
-    // becomes "Sheryu_Electronics" rather than "Sheryu__Electronics_".
+
     const safeStoreName = (store.store_name || "store")
       .replace(/[^a-z0-9]+/gi, "_")
       .replace(/^_+|_+$/g, "");
@@ -385,9 +378,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    // Cross-origin fetch() hides response headers from JS by default — without
-    // this, res.headers.get("Content-Disposition") on the frontend always
-    // returns null and it silently falls back to a generic filename.
+    
     res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
 
     const { colors, fonts, page } = THEME;
