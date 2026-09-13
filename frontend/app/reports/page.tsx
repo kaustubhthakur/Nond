@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/context/StoreContext";
 import { reportApi } from "@/lib/reportApi";
 import type { MonthlyReport } from "@/types/report";
@@ -29,7 +29,6 @@ function formatDate(iso: string) {
     year: "numeric",
   });
 }
-
 
 function safeFileNamePart(value: string) {
   return value.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
@@ -269,6 +268,7 @@ export default function ReportsPage() {
                   undefined,
                   item.profit !== null && item.profit < 0 ? "text-rust" : undefined,
                 ])}
+                scrollable
               />
             )}
           </section>
@@ -345,45 +345,77 @@ function ReportTable({
   columns,
   rows,
   cellTone,
+  scrollable = false,
 }: {
   columns: Column[];
   rows: string[][];
   cellTone?: (string | undefined)[][];
+  scrollable?: boolean;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showFade, setShowFade] = useState(false);
+
+  const updateFade = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  };
+
+  useEffect(() => {
+    if (!scrollable) return;
+    updateFade();
+    window.addEventListener("resize", updateFade);
+    return () => window.removeEventListener("resize", updateFade);
+   
+  }, [scrollable, rows.length]);
+
   return (
-    <div className="border border-line max-h-[420px] overflow-auto">
-      <table className="w-full min-w-[560px] text-sm tabular-nums">
-        <thead>
-          <tr className="text-left text-ink/50">
-            {columns.map((col) => (
-              <th
-                key={col.label}
-                className={`sticky top-0 z-10 bg-paper px-3 py-2 font-normal text-xs border-b border-line ${
-                  col.align === "right" ? "text-right" : "text-left"
-                }`}
-              >
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={idx} className={idx % 2 === 1 ? "bg-ink/[0.03]" : undefined}>
-              {row.map((cell, i) => (
-                <td
-                  key={i}
-                  className={`px-3 py-2 border-b border-line/50 last:border-0 ${
-                    columns[i]?.align === "right" ? "text-right" : "text-left"
-                  } ${cellTone?.[idx]?.[i] ?? "text-ink/80"}`}
+    <div className="relative">
+      <div
+        ref={scrollable ? scrollRef : undefined}
+        onScroll={scrollable ? updateFade : undefined}
+        className={`border border-line overflow-x-auto ${
+          scrollable
+            ? "max-h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-ink/15 [&::-webkit-scrollbar-thumb]:hover:bg-ink/30 [scrollbar-width:thin]"
+            : ""
+        }`}
+      >
+        <table className="w-full min-w-[560px] text-sm tabular-nums">
+          <thead>
+            <tr className="text-left text-ink/50">
+              {columns.map((col) => (
+                <th
+                  key={col.label}
+                  className={`${scrollable ? "sticky top-0 z-10" : ""} bg-paper px-3 py-2 font-normal text-xs border-b border-line ${
+                    col.align === "right" ? "text-right" : "text-left"
+                  }`}
                 >
-                  {cell}
-                </td>
+                  {col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={idx} className={idx % 2 === 1 ? "bg-ink/[0.03]" : undefined}>
+                {row.map((cell, i) => (
+                  <td
+                    key={i}
+                    className={`px-3 py-2 border-b border-line/50 last:border-0 ${
+                      columns[i]?.align === "right" ? "text-right" : "text-left"
+                    } ${cellTone?.[idx]?.[i] ?? "text-ink/80"}`}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {scrollable && showFade && (
+        <div className="pointer-events-none absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-paper to-transparent" />
+      )}
     </div>
   );
 }
