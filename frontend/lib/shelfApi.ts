@@ -183,12 +183,16 @@ export const shelfApi = {
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/products`
     ),
 
+  // sellingPrice is required — the backend uses it together with the
+  // product's stored cost price ("price") to compute and record profit,
+  // and rejects the request without a valid non-negative value.
   sellProduct: (
     storeId: string,
     warehouseId: string,
     shelfId: string,
     productId: string,
-    quantity: number
+    quantity: number,
+    sellingPrice: number
   ) =>
     request<{
       success: true;
@@ -202,6 +206,7 @@ export const shelfApi = {
         method: "POST",
         body: {
           quantity: Number(quantity),
+          sellingPrice: Number(sellingPrice),
         },
       }
     ),

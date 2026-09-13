@@ -83,7 +83,6 @@ export function recordSale(
       productName: product.name,
       sku: product.sku,
 
-  
       price,
 
       costPrice:
@@ -94,11 +93,6 @@ export function recordSale(
 
       quantity: qty,
     };
-  });
-
-  console.log("SALE PAYLOAD:", {
-    items,
-    soldAt,
   });
 
   return apiFetch<{ success: boolean; message: string; sale: Sale }>(
@@ -112,7 +106,6 @@ export function recordSale(
     }
   );
 }
-
 
 export function normalizeSale(raw: any): Sale {
   if (Array.isArray(raw.items)) {

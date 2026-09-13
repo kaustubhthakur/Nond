@@ -70,10 +70,15 @@ function levelLabel(level: SellOverviewProduct["level"]) {
   return level === "shelf" ? "Shelf" : level === "subShelf" ? "Sub-shelf" : "Box";
 }
 
+// sellingPrice is required for every level — the backend uses it (together
+// with the stored cost price) to compute and record profit on the sale, and
+// to validate the request. Without it the shelf/subShelf/box endpoints
+// reject the call with "Selling price must be a valid non-negative number".
 async function sellAtLocation(
   storeId: string,
   product: SellOverviewProduct,
-  quantity: number
+  quantity: number,
+  sellingPrice: number
 ) {
   if (product.level === "shelf") {
     return sellProductFromShelf(
@@ -81,7 +86,8 @@ async function sellAtLocation(
       product.warehouseId,
       product.shelfId!,
       product.id,
-      quantity
+      quantity,
+      sellingPrice
     );
   }
 
@@ -92,7 +98,8 @@ async function sellAtLocation(
       product.shelfId!,
       product.subShelfId!,
       product.id,
-      quantity
+      quantity,
+      sellingPrice
     );
   }
 
@@ -103,7 +110,8 @@ async function sellAtLocation(
     product.subShelfId!,
     product.boxId!,
     product.id,
-    quantity
+    quantity,
+    sellingPrice
   );
 }
 
@@ -389,7 +397,7 @@ export default function SellPage() {
     setModalError(null);
 
     try {
-      await sellAtLocation(storeId, selected, sellQty);
+      await sellAtLocation(storeId, selected, sellQty, sellPrice);
       const { sale } = await recordSale(
         storeId,
         [{ product: selected, quantity: sellQty, salePrice: sellPrice }],
@@ -503,7 +511,7 @@ export default function SellPage() {
      
       for (const line of cartLines) {
         try {
-          await sellAtLocation(storeId, line.product, line.quantity);
+          await sellAtLocation(storeId, line.product, line.quantity, line.salePrice);
         } catch (err: any) {
           throw new Error(
             `${line.product.name}: ${err?.message ?? "failed to update stock"}`
