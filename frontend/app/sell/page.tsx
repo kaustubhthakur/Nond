@@ -847,6 +847,12 @@ export default function SellPage() {
                       Units
                     </th>
                     <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Price
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
+                      Selling price
+                    </th>
+                    <th className="px-4 py-2.5 font-medium text-xs text-right">
                       Total
                     </th>
                     <th className="px-4 py-2.5 font-medium text-xs text-right">
@@ -865,6 +871,12 @@ export default function SellPage() {
                       .map((i) => i.productName)
                       .join(", ");
                     const extraCount = sale.items.length - 2;
+                    // Price / Selling price only make sense as single figures
+                    // when the sale has exactly one product line. A bulk sale
+                    // (multiple different products, still one row) shows a
+                    // dash here — the per-item breakdown below covers it.
+                    const singleItem =
+                      sale.items.length === 1 ? sale.items[0] : null;
 
                     return (
                       <>
@@ -890,6 +902,39 @@ export default function SellPage() {
                           </td>
                           <td className="px-4 py-3 text-right text-ink/60 tabular-nums">
                             {sale.totalUnits}
+                          </td>
+                          <td className="px-4 py-3 text-right text-ink/60 tabular-nums">
+                            {singleItem ? (
+                              singleItem.costPrice !== null ? (
+                                formatMoney(singleItem.costPrice)
+                              ) : (
+                                <span
+                                  className="text-ink/30"
+                                  title="No cost price recorded for this item"
+                                >
+                                  —
+                                </span>
+                              )
+                            ) : (
+                              <span
+                                className="text-ink/30 text-xs"
+                                title="Multiple products in this sale — expand for a per-item breakdown"
+                              >
+                                —
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right text-ink/60 tabular-nums">
+                            {singleItem ? (
+                              formatMoney(singleItem.price)
+                            ) : (
+                              <span
+                                className="text-ink/30 text-xs"
+                                title="Multiple products in this sale — expand for a per-item breakdown"
+                              >
+                                —
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-right text-accent font-semibold tabular-nums">
                             {formatMoney(sale.total)}
@@ -920,7 +965,7 @@ export default function SellPage() {
                         </tr>
                         {isExpanded && (
                           <tr key={`${sale.id}-detail`} className="bg-ink/[0.01]">
-                            <td colSpan={5} className="px-4 py-3">
+                            <td colSpan={7} className="px-4 py-3">
                               <div className="space-y-1.5">
                                 {sale.items.map((item, i) => (
                                   <div
