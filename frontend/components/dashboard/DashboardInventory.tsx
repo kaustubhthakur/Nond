@@ -54,7 +54,10 @@ export function DashboardInventory() {
                 allProducts.push({
                   rowId: `shelf-${warehouse.id}-${shelf.id}-${product.id}`,
                   productId: product.id,
-                  productName: product.name ?? "Product",
+                  // Backend currently stores the product's human-readable name
+                  // under "productId" (see addProduct in shelfApi.ts), not "name".
+                  // Fall back to that until the backend schema is fixed.
+                  productName: product.productId ?? product.name ?? "Product",
                   sku: product.sku ?? null,
                   quantity: Number(product.quantity ?? 0),
                   level: "shelf",
@@ -87,7 +90,7 @@ export function DashboardInventory() {
                   allProducts.push({
                     rowId: `subshelf-${warehouse.id}-${shelf.id}-${subShelf.id}-${product.id}`,
                     productId: product.id,
-                    productName: product.name ?? "Product",
+                    productName: product.productId ?? product.name ?? "Product",
                     sku: product.sku ?? null,
                     quantity: Number(product.quantity ?? 0),
                     level: "subshelf",
@@ -122,7 +125,7 @@ export function DashboardInventory() {
                     allProducts.push({
                       rowId: `box-${warehouse.id}-${shelf.id}-${subShelf.id}-${box.id}-${product.id}`,
                       productId: product.id,
-                      productName: product.name ?? "Product",
+                      productName: product.productId ?? product.name ?? "Product",
                       sku: product.sku ?? null,
                       quantity: Number(product.quantity ?? 0),
                       level: "box",
