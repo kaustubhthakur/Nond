@@ -165,10 +165,10 @@ export default function ProfilePage() {
               )}
             </div>
             <p className="text-sm text-ink/55 truncate mt-0.5">{user.email}</p>
-            {store?.name && (
+            {store?.store_name && (
               <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-ink/45">
                 <Store className="h-3 w-3" />
-                {store.name}
+                {store.store_name}
               </p>
             )}
           </div>
@@ -210,12 +210,10 @@ export default function ProfilePage() {
           {store ? (
             <dl>
               <DetailRow icon={<Store className="h-3.5 w-3.5" />} label="Store name">
-                {store.name || "—"}
+                {store.store_name || "—"}
               </DetailRow>
               <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label="Established">
-                {/* Assumption: Store has a `createdAt` field marking when it was set up.
-                    Adjust the key below if your Store type names it differently
-                    (e.g. `establishedAt`, `created_at`). */}
+         
                 {formatDate((store as any).createdAt ?? (store as any).created_at)}
               </DetailRow>
             </dl>
@@ -240,9 +238,7 @@ export default function ProfilePage() {
         )}
 
         {store && !statsError && stats && (
-          // Assumption: `stats` is a flat object of numeric metrics
-          // (e.g. { products: 42, sales: 310, warehouses: 3 }).
-          // Update the keys/labels below to match your actual stats shape.
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {Object.entries(stats).map(([key, value]) => (
               <StatCard
