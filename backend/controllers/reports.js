@@ -62,14 +62,7 @@ exports.getMonthlyReport = async (req, res) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// PDF export
-// ---------------------------------------------------------------------------
 
-// ---- Design tokens -------------------------------------------------------
-// Keeping every color / spacing value in one place makes it trivial to
-// re-theme the report later (e.g. per-store branding) without hunting
-// through layout code.
 const THEME = {
   colors: {
     band: "#16233A",        // header band background
@@ -106,8 +99,6 @@ async function fetchLogoBuffer(logoUrl) {
       return Buffer.from(response.data);
     }
 
-    // Relative path served by express.static (e.g. "/uploads/store-logos/xxx.jpg").
-    // Read it straight off disk instead of round-tripping over HTTP to ourselves.
     const localPath = path.join(__dirname, "..", logoUrl);
     return await fs.promises.readFile(localPath);
   } catch (err) {
@@ -141,8 +132,7 @@ const formatDateTime = (iso) => {
   });
 };
 
-// Narrower single-line variant for the "Sold On" / "Bought On" table columns,
-// where the full formatDateTime() output wraps and collides with the row below.
+
 const formatDateTimeCompact = (iso) => {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -151,7 +141,7 @@ const formatDateTimeCompact = (iso) => {
   return `${datePart}, ${timePart}`;
 };
 
-// ---- Low-level drawing helpers -------------------------------------------
+
 
 function drawTableHeader(doc, x, y, columns, fontSize = 9) {
   const { colors, fonts } = THEME;
@@ -208,8 +198,7 @@ function drawTotalsRow(doc, x, y, columns, totals, fontSize = 9) {
   return rowHeight + 6;
 }
 
-/** Draws a labeled stat card at (x, y) with the given width. Returns nothing;
- * caller controls the grid layout. */
+
 function drawStatCard(doc, x, y, w, h, label, value, { valueColor } = {}) {
   const { colors, fonts } = THEME;
   const labelWidth = w - 20;
@@ -228,8 +217,7 @@ function drawStatCard(doc, x, y, w, h, label, value, { valueColor } = {}) {
     .text(value, x + 10, y + 9 + labelHeight + 3, { width: labelWidth });
 }
 
-/** Ensures there is at least `needed` points of space before the bottom
- * margin; adds a new page (and re-renders the section title if given). */
+
 function ensureSpace(doc, needed, bottomLimit) {
   if (doc.y + needed > bottomLimit) {
     doc.addPage();
@@ -241,9 +229,7 @@ function ensureSpace(doc, needed, bottomLimit) {
 
 function drawSectionTitle(doc, title) {
   const { colors, fonts } = THEME;
-  // Always anchor explicitly at the left margin — doc.x otherwise carries
-  // over from whatever absolute-positioned element was drawn last (a stat
-  // card, a table cell...), which silently indents this title.
+
   doc.font(fonts.bold).fontSize(12.5).fillColor(colors.text).text(title, doc.page.margins.left, doc.y);
   doc.moveDown(0.5);
 }
@@ -262,8 +248,7 @@ function drawHeaderBand(doc, { store, monthLabel, logoBuffer }) {
     const logoSize = 46;
     const logoY = (bandHeight - logoSize) / 2;
     try {
-      // White plate behind the logo so transparent/light logos stay legible
-      // against the dark band.
+   
       doc.roundedRect(left, logoY, logoSize, logoSize, 6).fill("#FFFFFF");
       doc.image(logoBuffer, left + 3, logoY + 3, { fit: [logoSize - 6, logoSize - 6], align: "center", valign: "center" });
       textX = left + logoSize + 16;
@@ -299,11 +284,7 @@ function drawFooters(doc, { generatedAt }) {
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
 
-    // The footer lives inside the bottom margin band. pdfkit auto-inserts a
-    // new page the moment a text call would land past `page.height -
-    // margins.bottom`, so writing there with the real margin in place
-    // silently spawns a blank trailing page. Zero the margin just for this
-    // page's footer draw, then restore it.
+
     const originalBottomMargin = doc.page.margins.bottom;
     doc.page.margins.bottom = 0;
 
@@ -356,7 +337,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     const report = await Report.generateMonthlyReport({ storeId, year: y, month: m });
 
-    // Adjust these field names if your Store model differs.
+ 
     const logoBuffer = await fetchLogoBuffer(store.logo_url);
 
     const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`;
@@ -370,7 +351,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const doc = new PDFDocument({
       size: page.size,
       margin: page.margin,
-      bufferPages: true, // needed so we can go back and stamp footers/page numbers
+      bufferPages: true, 
       info: {
         Title: `${store.store_name || "Store"} - Monthly Report - ${monthLabel}`,
         Author: store.store_name || "Store",
@@ -383,10 +364,9 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const bottomLimit = doc.page.height - doc.page.margins.bottom - 26; // leave room for the footer
 
-    // ---- Header band ----
     drawHeaderBand(doc, { store, monthLabel, logoBuffer });
 
-    // ---- Summary stat cards ----
+   
     drawSectionTitle(doc, "Summary");
 
     const growthValue = Number(report.growth.growthPercent) || 0;
@@ -435,7 +415,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     doc.moveDown(1.2);
 
-    // ---- Purchases table ----
+  =
     drawSectionTitle(doc, "Products Purchased");
 
     const purchaseColumns = [
@@ -585,7 +565,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
       }
     }
 
-    // ---- Footers (page numbers + generated timestamp on every page) ----
+
     drawFooters(doc, { generatedAt: new Date().toLocaleString("en-IN") });
 
     doc.end();
