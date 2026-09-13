@@ -107,10 +107,13 @@ async function fetchLogoBuffer(logoUrl) {
   }
 }
 
-const formatCurrency = (value) =>
+// Decimals default to 0: every value in this business is a round rupee amount,
+// and keeping ".00" on every number was a big part of why cells overflowed.
+// Pass { decimals: 2 } explicitly if a caller ever needs paise precision.
+const formatCurrency = (value, { decimals = 0 } = {}) =>
   `Rs. ${(Number(value) || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   })}`;
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN");
@@ -142,7 +145,6 @@ const formatDateTimeCompact = (iso) => {
 };
 
 
-
 function drawTableHeader(doc, x, y, columns, fontSize = 9) {
   const { colors, fonts } = THEME;
   const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
@@ -151,7 +153,12 @@ function drawTableHeader(doc, x, y, columns, fontSize = 9) {
   doc.rect(x, y, totalWidth, rowHeight).fill(colors.tableHeaderBg);
   doc.font(fonts.bold).fontSize(fontSize).fillColor(colors.tableHeaderText);
   columns.forEach((col) => {
-    doc.text(col.label, x + col.x + 6, y + 5, { width: col.width - 10, align: col.align || "left" });
+    doc.text(col.label, x + col.x + 6, y + 5, {
+      width: col.width - 10,
+      height: rowHeight - 4,
+      align: col.align || "left",
+      ellipsis: true,
+    });
   });
 
   doc.fillColor(colors.text).font(fonts.regular).fontSize(fontSize);
@@ -171,9 +178,14 @@ function drawTableRow(doc, x, y, columns, row, { fontSize = 9, striped = false, 
   columns.forEach((col) => {
     const cellColor = (textColorKey && row[`${col.key}Color`]) || null;
     doc.fillColor(cellColor || colors.text);
+    // width + height + ellipsis keeps every cell to a single line: if a value is
+    // still too long for its column it gets truncated with "…" instead of the
+    // mid-number hard-wrap that was breaking row layout before.
     doc.text(String(row[col.key] ?? "-"), x + col.x + 6, y + 4, {
       width: col.width - 10,
+      height: rowHeight - 6,
       align: col.align || "left",
+      ellipsis: true,
     });
   });
   doc.fillColor(colors.text);
@@ -191,13 +203,29 @@ function drawTotalsRow(doc, x, y, columns, totals, fontSize = 9) {
   columns.forEach((col) => {
     const value = totals[col.key];
     if (value === undefined) return;
-    doc.text(String(value), x + col.x + 6, y + 6, { width: col.width - 10, align: col.align || "left" });
+    doc.text(String(value), x + col.x + 6, y + 6, {
+      width: col.width - 10,
+      height: rowHeight,
+      align: col.align || "left",
+      ellipsis: true,
+    });
   });
   doc.font(fonts.regular);
 
   return rowHeight + 6;
 }
 
+
+// Shrinks the value font (down to a floor) until it fits the card's width,
+// instead of letting PDFKit hard-wrap a long currency figure mid-digit.
+function fitSingleLineFontSize(doc, text, font, maxWidth, startSize, minSize = 9) {
+  doc.font(font);
+  let size = startSize;
+  while (size > minSize && doc.fontSize(size).widthOfString(text) > maxWidth) {
+    size -= 0.5;
+  }
+  return size;
+}
 
 function drawStatCard(doc, x, y, w, h, label, value, { valueColor } = {}) {
   const { colors, fonts } = THEME;
@@ -210,11 +238,19 @@ function drawStatCard(doc, x, y, w, h, label, value, { valueColor } = {}) {
   doc
     .fillColor(colors.muted)
     .text(label.toUpperCase(), x + 10, y + 9, { width: labelWidth, characterSpacing: 0.3 });
+
+  const valueFontSize = fitSingleLineFontSize(doc, value, fonts.bold, labelWidth, 15, 9);
+  const valueY = y + 9 + labelHeight + 3;
+
   doc
     .font(fonts.bold)
-    .fontSize(15)
+    .fontSize(valueFontSize)
     .fillColor(valueColor || colors.text)
-    .text(value, x + 10, y + 9 + labelHeight + 3, { width: labelWidth });
+    .text(value, x + 10, valueY, {
+      width: labelWidth,
+      height: Math.max(h - (valueY - y) - 4, valueFontSize + 2),
+      ellipsis: true,
+    });
 }
 
 
@@ -248,7 +284,7 @@ function drawHeaderBand(doc, { store, monthLabel, logoBuffer }) {
     const logoSize = 46;
     const logoY = (bandHeight - logoSize) / 2;
     try {
-   
+
       doc.roundedRect(left, logoY, logoSize, logoSize, 6).fill("#FFFFFF");
       doc.image(logoBuffer, left + 3, logoY + 3, { fit: [logoSize - 6, logoSize - 6], align: "center", valign: "center" });
       textX = left + logoSize + 16;
@@ -283,7 +319,6 @@ function drawFooters(doc, { generatedAt }) {
 
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
-
 
     const originalBottomMargin = doc.page.margins.bottom;
     doc.page.margins.bottom = 0;
@@ -337,7 +372,6 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     const report = await Report.generateMonthlyReport({ storeId, year: y, month: m });
 
- 
     const logoBuffer = await fetchLogoBuffer(store.logo_url);
 
     const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`;
@@ -351,7 +385,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const doc = new PDFDocument({
       size: page.size,
       margin: page.margin,
-      bufferPages: true, 
+      bufferPages: true,
       info: {
         Title: `${store.store_name || "Store"} - Monthly Report - ${monthLabel}`,
         Author: store.store_name || "Store",
@@ -366,7 +400,6 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     drawHeaderBand(doc, { store, monthLabel, logoBuffer });
 
-   
     drawSectionTitle(doc, "Summary");
 
     const growthValue = Number(report.growth.growthPercent) || 0;
@@ -390,7 +423,7 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const cardGap = 10;
     const cardsPerRow = 4;
     const cardW = (pageWidth - cardGap * (cardsPerRow - 1)) / cardsPerRow;
-    const cardH = 50;
+    const cardH = 54;
     const startY = doc.y;
 
     stats.forEach((stat, i) => {
@@ -415,15 +448,14 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     doc.moveDown(1.2);
 
-  =
     drawSectionTitle(doc, "Products Purchased");
 
     const purchaseColumns = [
-      { key: "date", label: "Bought On", x: 0, width: 80 },
-      { key: "productName", label: "Product", x: 80, width: 145 },
-      { key: "buyingPrice", label: "Buying Price", x: 225, width: 80, align: "right" },
-      { key: "quantity", label: "Units", x: 305, width: 55, align: "right" },
-      { key: "totalCost", label: "Total Cost", x: 360, width: 90, align: "right" },
+      { key: "date", label: "Bought On", x: 0, width: 75 },
+      { key: "productName", label: "Product", x: 75, width: 125 },
+      { key: "buyingPrice", label: "Buying Price", x: 200, width: 90, align: "right" },
+      { key: "quantity", label: "Units", x: 290, width: 50, align: "right" },
+      { key: "totalCost", label: "Total Cost", x: 340, width: 130, align: "right" },
     ];
 
     if (report.purchases.items.length === 0) {
@@ -476,14 +508,14 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     const saleFontSize = 8;
     const saleColumns = [
-      { key: "soldOn", label: "Sold On", x: 0, width: 68 },
-      { key: "boughtOn", label: "Bought On", x: 68, width: 68 },
-      { key: "productName", label: "Product", x: 136, width: 113 },
-      { key: "buyingPrice", label: "Buy Price", x: 249, width: 52, align: "right" },
-      { key: "sellingPrice", label: "Sell Price", x: 301, width: 52, align: "right" },
-      { key: "quantity", label: "Units", x: 353, width: 32, align: "right" },
-      { key: "subtotal", label: "Subtotal", x: 385, width: 65, align: "right" },
-      { key: "profit", label: "Profit", x: 450, width: 65, align: "right" },
+      { key: "soldOn", label: "Sold On", x: 0, width: 50 },
+      { key: "boughtOn", label: "Bought On", x: 50, width: 48 },
+      { key: "productName", label: "Product", x: 98, width: 110, align: "left" },
+      { key: "buyingPrice", label: "Buy Price", x: 208, width: 65, align: "right" },
+      { key: "sellingPrice", label: "Sell Price", x: 273, width: 65, align: "right" },
+      { key: "quantity", label: "Units", x: 338, width: 27, align: "right" },
+      { key: "subtotal", label: "Subtotal", x: 365, width: 75, align: "right" },
+      { key: "profit", label: "Profit", x: 440, width: 75, align: "right" },
     ];
 
     if (report.sales.items.length === 0) {
@@ -564,7 +596,6 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
         doc.fillColor(colors.text);
       }
     }
-
 
     drawFooters(doc, { generatedAt: new Date().toLocaleString("en-IN") });
 
