@@ -515,16 +515,16 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
 
     drawSectionTitle(doc, "Products Sold");
 
-    const saleFontSize = 8;
+    const saleFontSize = 7.5;
     const saleColumns = [
-      { key: "soldOn", label: "Sold On", x: 0, width: 50 },
-      { key: "boughtOn", label: "Bought On", x: 50, width: 48 },
-      { key: "productName", label: "Product", x: 98, width: 110, align: "left" },
-      { key: "buyingPrice", label: "Buy Price", x: 208, width: 65, align: "right" },
-      { key: "sellingPrice", label: "Sell Price", x: 273, width: 65, align: "right" },
-      { key: "quantity", label: "Units", x: 338, width: 27, align: "right" },
-      { key: "subtotal", label: "Subtotal", x: 365, width: 75, align: "right" },
-      { key: "profit", label: "Profit", x: 440, width: 75, align: "right" },
+      { key: "soldOn", label: "Sold On", x: 0, width: 65 },
+      { key: "boughtOn", label: "Bought On", x: 65, width: 65 },
+      { key: "productName", label: "Product", x: 130, width: 82, align: "left" },
+      { key: "buyingPrice", label: "Buy Price", x: 212, width: 63, align: "right" },
+      { key: "sellingPrice", label: "Sell Price", x: 275, width: 63, align: "right" },
+      { key: "quantity", label: "Units", x: 338, width: 25, align: "right" },
+      { key: "subtotal", label: "Subtotal", x: 363, width: 72, align: "right" },
+      { key: "profit", label: "Profit", x: 435, width: 80, align: "right" },
     ];
 
     if (report.sales.items.length === 0) {
