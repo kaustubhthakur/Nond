@@ -6,8 +6,11 @@ export interface User {
   email: string;
   phone?: string;
   isadmin?: boolean;
-  isEmailVerified?: boolean;
-  isPhoneVerified?: boolean;
+  avatar?: string | null;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  onboarding_completed?: boolean;
+  created_at?: string;
   [key: string]: unknown;
 }
 

@@ -186,13 +186,13 @@ export default function ProfilePage() {
               {user.email || "—"}
             </DetailRow>
             <DetailRow label="Email verified">
-              <VerifyField type="email" userId={user.id} verified={user.email_verified} />
+              <VerifyField type="email" userId={user.id} verified={!!user.email_verified} />
             </DetailRow>
             <DetailRow icon={<Phone className="h-3.5 w-3.5" />} label="Phone">
               {user.phone || "—"}
             </DetailRow>
             <DetailRow label="Phone verified">
-              <VerifyField type="phone" userId={user.id} verified={user.phone_verified} />
+              <VerifyField type="phone" userId={user.id} verified={!!user.phone_verified} />
             </DetailRow>
             <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label="Member since">
               {formatDate(user.created_at)}
@@ -213,7 +213,9 @@ export default function ProfilePage() {
                 {store.store_name || "—"}
               </DetailRow>
               <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label="Established">
-         
+                {/* Assumption: Store has a `createdAt` field marking when it was set up.
+                    Adjust the key below if your Store type names it differently
+                    (e.g. `established_at`, `created_at`). */}
                 {formatDate((store as any).createdAt ?? (store as any).created_at)}
               </DetailRow>
             </dl>
@@ -238,7 +240,9 @@ export default function ProfilePage() {
         )}
 
         {store && !statsError && stats && (
-
+          // Assumption: `stats` is a flat object of numeric metrics
+          // (e.g. { warehouses: 2, shelves: 2, subShelves: 0 }).
+          // Update the keys/labels below if your StoreStats type differs.
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {Object.entries(stats).map(([key, value]) => (
               <StatCard

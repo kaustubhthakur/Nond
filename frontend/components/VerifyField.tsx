@@ -21,7 +21,9 @@ export function VerifyField({ type, userId, verified }: VerifyFieldProps) {
     setError(null);
     setSending(true);
     try {
-      await authApi.sendOtp({ userId, method: "email" });
+      // Was hardcoded to "email" regardless of `type`, so phone verification
+      // silently sent an email OTP request instead of a phone one.
+      await authApi.sendOtp({ userId, method: type });
       setStage("otp-sent");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send code");
@@ -35,7 +37,7 @@ export function VerifyField({ type, userId, verified }: VerifyFieldProps) {
     setError(null);
     setStage("verifying");
     try {
-      await authApi.verifyOtp({ userId, otp: otp.trim(), method: "email" });
+      await authApi.verifyOtp({ userId, otp: otp.trim(), method: type });
 
       if (type === "email") {
         await authApi.verifyEmail(userId);
@@ -102,7 +104,9 @@ export function VerifyField({ type, userId, verified }: VerifyFieldProps) {
           Resend
         </button>
       </div>
-      <span className="text-xs text-ink/50">Code sent to your email</span>
+      <span className="text-xs text-ink/50">
+        Code sent to your {type === "email" ? "email" : "phone"}
+      </span>
       {error && <span className="text-xs text-rust">{error}</span>}
     </div>
   );
