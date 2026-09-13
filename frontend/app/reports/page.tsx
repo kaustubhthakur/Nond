@@ -27,6 +27,13 @@ function formatDate(iso: string) {
   });
 }
 
+// Mirrors the sanitizing the backend does on store_name, so the filename the
+// user sees matches what the server would have sent even if the
+// Content-Disposition header isn't readable (see reportApi.ts).
+function safeFileNamePart(value: string) {
+  return value.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
+}
+
 export default function ReportsPage() {
   const { store } = useStore();
   const { year: defaultYear, month: defaultMonth } = useMemo(currentYearMonth, []);
@@ -64,7 +71,8 @@ export default function ReportsPage() {
     setDownloading(true);
     setError(null);
     try {
-      await reportApi.downloadMonthlyReportPdf(store.id, year, month);
+      const fileNameHint = `${safeFileNamePart(store.store_name)}_${MONTH_NAMES[month - 1]}_${year}.pdf`;
+      await reportApi.downloadMonthlyReportPdf(store.id, year, month, fileNameHint);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download report");
     } finally {

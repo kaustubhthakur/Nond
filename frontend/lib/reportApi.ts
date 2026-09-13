@@ -30,12 +30,7 @@ export const reportApi = {
     return data.report as MonthlyReport;
   },
 
-  /**
-   * Downloads the monthly report as a PDF. Fetches it as a blob (rather than
-   * a plain <a href> navigation) so credentials are sent the same way the
-   * rest of the app's API calls send them, and so we can react to a failed
-   * request instead of the browser silently opening an error page.
-   */
+
   async downloadMonthlyReportPdf(
     storeId: string,
     year: number,
@@ -54,9 +49,10 @@ export const reportApi = {
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
 
+  
     const disposition = res.headers.get("Content-Disposition");
     const match = disposition?.match(/filename="?([^"]+)"?/);
-    const fileName = match?.[1] || fileNameHint || `report_${year}_${month}.pdf`;
+    const fileName = match?.[1] || fileNameHint || `report_${year}_${String(month).padStart(2, "0")}.pdf`;
 
     const link = document.createElement("a");
     link.href = url;

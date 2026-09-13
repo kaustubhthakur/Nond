@@ -375,11 +375,20 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     const logoBuffer = await fetchLogoBuffer(store.logo_url);
 
     const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`;
-    const safeStoreName = (store.store_name || "store").replace(/[^a-z0-9]/gi, "_");
-    const fileName = `${safeStoreName}_report_${y}_${String(m).padStart(2, "0")}.pdf`;
+    // Collapse any run of non-alphanumeric characters (spaces, punctuation) into a
+    // single underscore, and trim leading/trailing underscores, so "Sheryu Electronics"
+    // becomes "Sheryu_Electronics" rather than "Sheryu__Electronics_".
+    const safeStoreName = (store.store_name || "store")
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "");
+    const fileName = `${safeStoreName}_${MONTH_NAMES[m - 1]}_${y}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    // Cross-origin fetch() hides response headers from JS by default — without
+    // this, res.headers.get("Content-Disposition") on the frontend always
+    // returns null and it silently falls back to a generic filename.
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
 
     const { colors, fonts, page } = THEME;
     const doc = new PDFDocument({
