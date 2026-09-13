@@ -66,6 +66,34 @@ exports.getMonthlyReport = async (req, res) => {
 // PDF export
 // ---------------------------------------------------------------------------
 
+// ---- Design tokens -------------------------------------------------------
+// Keeping every color / spacing value in one place makes it trivial to
+// re-theme the report later (e.g. per-store branding) without hunting
+// through layout code.
+const THEME = {
+  colors: {
+    band: "#16233A",        // header band background
+    bandText: "#FFFFFF",
+    bandSubtext: "#AEB9CC",
+    text: "#1F2430",
+    muted: "#6B7280",
+    faint: "#9AA3AF",
+    border: "#E3E6EA",
+    tableHeaderBg: "#F3F4F6",
+    tableHeaderText: "#374151",
+    rowAlt: "#FAFAFB",
+    positive: "#15803D",
+    negative: "#B91C1C",
+    accent: "#C1440E",
+  },
+  fonts: {
+    regular: "Helvetica",
+    bold: "Helvetica-Bold",
+    italic: "Helvetica-Oblique",
+  },
+  page: { size: "A4", margin: 40 },
+};
+
 async function fetchLogoBuffer(logoUrl) {
   if (!logoUrl) return null;
 
@@ -88,7 +116,13 @@ async function fetchLogoBuffer(logoUrl) {
   }
 }
 
-const formatCurrency = (value) => `Rs. ${(Number(value) || 0).toFixed(2)}`;
+const formatCurrency = (value) =>
+  `Rs. ${(Number(value) || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN");
 
 const formatDate = (iso) => {
   if (!iso) return "-";
@@ -107,21 +141,195 @@ const formatDateTime = (iso) => {
   });
 };
 
+// Narrower single-line variant for the "Sold On" / "Bought On" table columns,
+// where the full formatDateTime() output wraps and collides with the row below.
+const formatDateTimeCompact = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  const datePart = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  const timePart = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${datePart}, ${timePart}`;
+};
+
+// ---- Low-level drawing helpers -------------------------------------------
+
 function drawTableHeader(doc, x, y, columns, fontSize = 9) {
-  doc.font("Helvetica-Bold").fontSize(fontSize).fillColor("#000000");
-  columns.forEach((col) => {
-    doc.text(col.label, x + col.x, y, { width: col.width, align: col.align || "left" });
-  });
+  const { colors, fonts } = THEME;
   const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
-  doc.moveTo(x, y + 14).lineTo(x + totalWidth, y + 14).stroke();
-  doc.font("Helvetica").fontSize(fontSize);
+  const rowHeight = fontSize + 10;
+
+  doc.rect(x, y, totalWidth, rowHeight).fill(colors.tableHeaderBg);
+  doc.font(fonts.bold).fontSize(fontSize).fillColor(colors.tableHeaderText);
+  columns.forEach((col) => {
+    doc.text(col.label, x + col.x + 6, y + 5, { width: col.width - 10, align: col.align || "left" });
+  });
+
+  doc.fillColor(colors.text).font(fonts.regular).fontSize(fontSize);
+  return rowHeight;
 }
 
-function drawTableRow(doc, x, y, columns, row, fontSize = 9) {
-  doc.font("Helvetica").fontSize(fontSize);
+function drawTableRow(doc, x, y, columns, row, { fontSize = 9, striped = false, height, textColorKey } = {}) {
+  const { colors, fonts } = THEME;
+  const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
+  const rowHeight = height || fontSize + 9;
+
+  if (striped) {
+    doc.rect(x, y, totalWidth, rowHeight).fill(colors.rowAlt);
+  }
+
+  doc.font(fonts.regular).fontSize(fontSize).fillColor(colors.text);
   columns.forEach((col) => {
-    doc.text(String(row[col.key] ?? "-"), x + col.x, y, { width: col.width, align: col.align || "left" });
+    const cellColor = (textColorKey && row[`${col.key}Color`]) || null;
+    doc.fillColor(cellColor || colors.text);
+    doc.text(String(row[col.key] ?? "-"), x + col.x + 6, y + 4, {
+      width: col.width - 10,
+      align: col.align || "left",
+    });
   });
+  doc.fillColor(colors.text);
+
+  return rowHeight;
+}
+
+function drawTotalsRow(doc, x, y, columns, totals, fontSize = 9) {
+  const { colors, fonts } = THEME;
+  const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
+  const rowHeight = fontSize + 10;
+
+  doc.moveTo(x, y).lineTo(x + totalWidth, y).lineWidth(1).strokeColor(colors.border).stroke();
+  doc.font(fonts.bold).fontSize(fontSize).fillColor(colors.text);
+  columns.forEach((col) => {
+    const value = totals[col.key];
+    if (value === undefined) return;
+    doc.text(String(value), x + col.x + 6, y + 6, { width: col.width - 10, align: col.align || "left" });
+  });
+  doc.font(fonts.regular);
+
+  return rowHeight + 6;
+}
+
+/** Draws a labeled stat card at (x, y) with the given width. Returns nothing;
+ * caller controls the grid layout. */
+function drawStatCard(doc, x, y, w, h, label, value, { valueColor } = {}) {
+  const { colors, fonts } = THEME;
+  const labelWidth = w - 20;
+  doc.roundedRect(x, y, w, h, 4).fillAndStroke("#FFFFFF", colors.border);
+
+  doc.font(fonts.regular).fontSize(8.5);
+  const labelHeight = doc.heightOfString(label.toUpperCase(), { width: labelWidth, characterSpacing: 0.3 });
+
+  doc
+    .fillColor(colors.muted)
+    .text(label.toUpperCase(), x + 10, y + 9, { width: labelWidth, characterSpacing: 0.3 });
+  doc
+    .font(fonts.bold)
+    .fontSize(15)
+    .fillColor(valueColor || colors.text)
+    .text(value, x + 10, y + 9 + labelHeight + 3, { width: labelWidth });
+}
+
+/** Ensures there is at least `needed` points of space before the bottom
+ * margin; adds a new page (and re-renders the section title if given). */
+function ensureSpace(doc, needed, bottomLimit) {
+  if (doc.y + needed > bottomLimit) {
+    doc.addPage();
+    doc.y = doc.page.margins.top;
+    return true;
+  }
+  return false;
+}
+
+function drawSectionTitle(doc, title) {
+  const { colors, fonts } = THEME;
+  // Always anchor explicitly at the left margin — doc.x otherwise carries
+  // over from whatever absolute-positioned element was drawn last (a stat
+  // card, a table cell...), which silently indents this title.
+  doc.font(fonts.bold).fontSize(12.5).fillColor(colors.text).text(title, doc.page.margins.left, doc.y);
+  doc.moveDown(0.5);
+}
+
+function drawHeaderBand(doc, { store, monthLabel, logoBuffer }) {
+  const { colors, fonts } = THEME;
+  const pageWidth = doc.page.width;
+  const bandHeight = 92;
+
+  doc.rect(0, 0, pageWidth, bandHeight).fill(colors.band);
+
+  const left = doc.page.margins.left;
+  let textX = left;
+
+  if (logoBuffer) {
+    const logoSize = 46;
+    const logoY = (bandHeight - logoSize) / 2;
+    try {
+      // White plate behind the logo so transparent/light logos stay legible
+      // against the dark band.
+      doc.roundedRect(left, logoY, logoSize, logoSize, 6).fill("#FFFFFF");
+      doc.image(logoBuffer, left + 3, logoY + 3, { fit: [logoSize - 6, logoSize - 6], align: "center", valign: "center" });
+      textX = left + logoSize + 16;
+    } catch (err) {
+      console.error("Failed to embed logo image:", err.message);
+    }
+  }
+
+  const textBlockHeight = 44;
+  const textY = (bandHeight - textBlockHeight) / 2;
+
+  doc
+    .font(fonts.bold)
+    .fontSize(18)
+    .fillColor(colors.bandText)
+    .text(store.store_name || "Store", textX, textY, { width: pageWidth - textX - doc.page.margins.right });
+
+  doc
+    .font(fonts.regular)
+    .fontSize(10.5)
+    .fillColor(colors.bandSubtext)
+    .text(`Monthly Sales Report  \u2022  ${monthLabel}`, textX, textY + 22);
+
+  doc.fillColor(colors.text);
+  doc.y = bandHeight + 28;
+}
+
+function drawFooters(doc, { generatedAt }) {
+  const { colors, fonts } = THEME;
+  const range = doc.bufferedPageRange();
+  const left = doc.page.margins.left;
+
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+
+    // The footer lives inside the bottom margin band. pdfkit auto-inserts a
+    // new page the moment a text call would land past `page.height -
+    // margins.bottom`, so writing there with the real margin in place
+    // silently spawns a blank trailing page. Zero the margin just for this
+    // page's footer draw, then restore it.
+    const originalBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const y = doc.page.height - originalBottomMargin + 14;
+
+    doc.moveTo(left, y).lineTo(left + pageWidth, y).lineWidth(0.5).strokeColor(colors.border).stroke();
+
+    doc
+      .font(fonts.italic)
+      .fontSize(8)
+      .fillColor(colors.faint)
+      .text(`Generated on ${generatedAt}`, left, y + 6, { width: pageWidth / 2, align: "left", lineBreak: false });
+
+    doc
+      .font(fonts.regular)
+      .fontSize(8)
+      .fillColor(colors.faint)
+      .text(`Page ${i - range.start + 1} of ${range.count}`, left + pageWidth / 2, y + 6, {
+        width: pageWidth / 2,
+        align: "right",
+        lineBreak: false,
+      });
+
+    doc.page.margins.bottom = originalBottomMargin;
+  }
 }
 
 exports.downloadMonthlyReportPdf = async (req, res) => {
@@ -158,68 +366,77 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
-    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    const { colors, fonts, page } = THEME;
+    const doc = new PDFDocument({
+      size: page.size,
+      margin: page.margin,
+      bufferPages: true, // needed so we can go back and stamp footers/page numbers
+      info: {
+        Title: `${store.store_name || "Store"} - Monthly Report - ${monthLabel}`,
+        Author: store.store_name || "Store",
+      },
+    });
     doc.pipe(res);
+    doc.font(fonts.regular).fillColor(colors.text);
 
     const left = doc.page.margins.left;
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const bottomLimit = doc.page.height - doc.page.margins.bottom;
+    const bottomLimit = doc.page.height - doc.page.margins.bottom - 26; // leave room for the footer
 
-    // ---- Header: logo + store name + period ----
-    const headerY = doc.y;
-    const textX = left + (logoBuffer ? 65 : 0);
+    // ---- Header band ----
+    drawHeaderBand(doc, { store, monthLabel, logoBuffer });
 
-    if (logoBuffer) {
-      try {
-        doc.image(logoBuffer, left, headerY, { fit: [50, 50] });
-      } catch (err) {
-        console.error("Failed to embed logo image:", err.message);
-      }
-    }
+    // ---- Summary stat cards ----
+    drawSectionTitle(doc, "Summary");
 
-    doc.font("Helvetica-Bold").fontSize(18).text(store.store_name || "Store", textX, headerY);
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor("#555555")
-      .text(`Monthly Report - ${monthLabel}`, textX, doc.y + 2);
+    const growthValue = Number(report.growth.growthPercent) || 0;
+    const growthSign = growthValue >= 0 ? "+" : "";
+    const growthColor = growthValue >= 0 ? colors.positive : colors.negative;
 
-    doc.fillColor("#000000");
-    doc.y = headerY + 60;
-    doc.moveTo(left, doc.y).lineTo(left + pageWidth, doc.y).stroke();
-    doc.moveDown(1);
-
-    // ---- Summary ----
-    doc.font("Helvetica-Bold").fontSize(13).text("Summary");
-    doc.moveDown(0.5);
-    doc.font("Helvetica").fontSize(10);
-
-    const profitLine = report.sales.profitDataComplete
+    const profitValue = report.sales.profitDataComplete
       ? formatCurrency(report.sales.totalProfit)
-      : `${formatCurrency(report.sales.totalProfit)} (incomplete cost data)`;
+      : `${formatCurrency(report.sales.totalProfit)}*`;
 
-    const growthSign = report.growth.growthPercent >= 0 ? "+" : "";
-
-    const summaryLines = [
-      ["Total units purchased", report.purchases.totalUnitsBought],
-      ["Total purchase cost", formatCurrency(report.purchases.totalPurchaseCost)],
-      ["Total units sold", report.sales.totalUnitsSold],
-      ["Total revenue", formatCurrency(report.sales.totalRevenue)],
-      ["Total profit", profitLine],
-      ["Sales growth vs previous month", `${growthSign}${report.growth.growthPercent}%`],
-      ["Current stock available", `${report.stock.totalUnitsAvailable} units`],
+    const stats = [
+      { label: "Units Purchased", value: formatNumber(report.purchases.totalUnitsBought) },
+      { label: "Purchase Cost", value: formatCurrency(report.purchases.totalPurchaseCost) },
+      { label: "Units Sold", value: formatNumber(report.sales.totalUnitsSold) },
+      { label: "Total Revenue", value: formatCurrency(report.sales.totalRevenue) },
+      { label: "Total Profit", value: profitValue },
+      { label: "Growth (MoM)", value: `${growthSign}${growthValue}%`, valueColor: growthColor },
+      { label: "Stock On Hand", value: `${formatNumber(report.stock.totalUnitsAvailable)} units` },
     ];
 
-    summaryLines.forEach(([label, value]) => {
-      doc.font("Helvetica").text(`${label}: `, { continued: true });
-      doc.font("Helvetica-Bold").text(String(value));
+    const cardGap = 10;
+    const cardsPerRow = 4;
+    const cardW = (pageWidth - cardGap * (cardsPerRow - 1)) / cardsPerRow;
+    const cardH = 50;
+    const startY = doc.y;
+
+    stats.forEach((stat, i) => {
+      const col = i % cardsPerRow;
+      const row = Math.floor(i / cardsPerRow);
+      const x = left + col * (cardW + cardGap);
+      const cy = startY + row * (cardH + cardGap);
+      drawStatCard(doc, x, cy, cardW, cardH, stat.label, stat.value, { valueColor: stat.valueColor });
     });
 
-    doc.moveDown(1.5);
+    const cardRows = Math.ceil(stats.length / cardsPerRow);
+    doc.y = startY + cardRows * (cardH + cardGap) + 6;
+
+    if (!report.sales.profitDataComplete) {
+      doc
+        .font(fonts.italic)
+        .fontSize(8)
+        .fillColor(colors.faint)
+        .text("* Profit figure is based on partial cost data for this period.", left);
+      doc.fillColor(colors.text);
+    }
+
+    doc.moveDown(1.2);
 
     // ---- Purchases table ----
-    doc.font("Helvetica-Bold").fontSize(13).text("Products Purchased");
-    doc.moveDown(0.5);
+    drawSectionTitle(doc, "Products Purchased");
 
     const purchaseColumns = [
       { key: "date", label: "Bought On", x: 0, width: 80 },
@@ -230,101 +447,146 @@ exports.downloadMonthlyReportPdf = async (req, res) => {
     ];
 
     if (report.purchases.items.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor("#777777").text("No purchases recorded this month.");
-      doc.fillColor("#000000");
+      doc.font(fonts.regular).fontSize(9).fillColor(colors.faint).text("No purchases recorded this month.", left, doc.y);
+      doc.fillColor(colors.text);
       doc.moveDown(1);
     } else {
       let rowY = doc.y;
-      drawTableHeader(doc, left, rowY, purchaseColumns);
-      rowY += 20;
+      rowY += drawTableHeader(doc, left, rowY, purchaseColumns);
 
-      report.purchases.items.forEach((item) => {
-        if (rowY > bottomLimit - 40) {
+      let totalUnits = 0;
+      let totalCost = 0;
+
+      report.purchases.items.forEach((item, idx) => {
+        if (rowY + 18 > bottomLimit) {
           doc.addPage();
           rowY = doc.page.margins.top;
-          drawTableHeader(doc, left, rowY, purchaseColumns);
-          rowY += 20;
+          rowY += drawTableHeader(doc, left, rowY, purchaseColumns);
         }
 
-        drawTableRow(doc, left, rowY, purchaseColumns, {
+        rowY += drawTableRow(doc, left, rowY, purchaseColumns, {
           date: formatDate(item.boughtAt || item.date),
           productName: item.productName,
           buyingPrice: formatCurrency(item.buyingPrice ?? item.price),
-          quantity: item.quantity,
+          quantity: formatNumber(item.quantity),
           totalCost: formatCurrency(item.totalCost),
-        });
-        rowY += 18;
+        }, { striped: idx % 2 === 1 });
+
+        totalUnits += Number(item.quantity) || 0;
+        totalCost += Number(item.totalCost) || 0;
       });
 
-      doc.y = rowY + 10;
+      if (rowY + 20 > bottomLimit) {
+        doc.addPage();
+        rowY = doc.page.margins.top;
+      }
+      rowY += drawTotalsRow(doc, left, rowY, purchaseColumns, {
+        productName: "Total",
+        quantity: formatNumber(totalUnits),
+        totalCost: formatCurrency(totalCost),
+      });
+
+      doc.y = rowY + 14;
     }
 
     // ---- Sales table ----
-    if (doc.y > bottomLimit - 100) {
-      doc.addPage();
-    }
+    ensureSpace(doc, 90, bottomLimit);
 
-    doc.font("Helvetica-Bold").fontSize(13).text("Products Sold");
-    doc.moveDown(0.5);
+    drawSectionTitle(doc, "Products Sold");
 
     const saleFontSize = 8;
-
     const saleColumns = [
-      { key: "soldOn", label: "Sold On", x: 0, width: 60 },
-      { key: "boughtOn", label: "Bought On", x: 60, width: 60 },
-      { key: "productName", label: "Product", x: 120, width: 100 },
-      { key: "buyingPrice", label: "Buy Price", x: 220, width: 55, align: "right" },
-      { key: "sellingPrice", label: "Sell Price", x: 275, width: 55, align: "right" },
-      { key: "quantity", label: "Units", x: 330, width: 35, align: "right" },
-      { key: "subtotal", label: "Subtotal", x: 365, width: 65, align: "right" },
-      { key: "profit", label: "Profit", x: 430, width: 65, align: "right" },
+      { key: "soldOn", label: "Sold On", x: 0, width: 68 },
+      { key: "boughtOn", label: "Bought On", x: 68, width: 68 },
+      { key: "productName", label: "Product", x: 136, width: 113 },
+      { key: "buyingPrice", label: "Buy Price", x: 249, width: 52, align: "right" },
+      { key: "sellingPrice", label: "Sell Price", x: 301, width: 52, align: "right" },
+      { key: "quantity", label: "Units", x: 353, width: 32, align: "right" },
+      { key: "subtotal", label: "Subtotal", x: 385, width: 65, align: "right" },
+      { key: "profit", label: "Profit", x: 450, width: 65, align: "right" },
     ];
 
     if (report.sales.items.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor("#777777").text("No sales recorded this month.");
-      doc.fillColor("#000000");
+      doc.font(fonts.regular).fontSize(9).fillColor(colors.faint).text("No sales recorded this month.", left, doc.y);
+      doc.fillColor(colors.text);
     } else {
       let rowY = doc.y;
-      drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
-      rowY += 18;
+      rowY += drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
 
-      report.sales.items.forEach((item) => {
-        if (rowY > bottomLimit - 40) {
+      let totalUnits = 0;
+      let totalSubtotal = 0;
+      let totalProfit = 0;
+      let hasIncompleteProfit = false;
+
+      report.sales.items.forEach((item, idx) => {
+        if (rowY + 16 > bottomLimit) {
           doc.addPage();
           rowY = doc.page.margins.top;
-          drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
-          rowY += 18;
+          rowY += drawTableHeader(doc, left, rowY, saleColumns, saleFontSize);
         }
 
-        drawTableRow(doc, left, rowY, saleColumns, {
-          soldOn: formatDateTime(item.soldAt || item.date),
-          boughtOn: formatDateTime(item.boughtAt),
-          productName: item.productName,
-          buyingPrice:
-            item.buyingPrice !== null && item.buyingPrice !== undefined
-              ? formatCurrency(item.buyingPrice)
-              : "-",
-          sellingPrice: formatCurrency(item.sellingPrice ?? item.price),
-          quantity: item.quantity,
-          subtotal: formatCurrency(item.subtotal),
-          profit:
-            item.profit !== null && item.profit !== undefined
-              ? formatCurrency(item.profit)
-              : "-",
-        }, saleFontSize);
-        rowY += 16;
+        const hasProfit = item.profit !== null && item.profit !== undefined;
+        if (!hasProfit) hasIncompleteProfit = true;
+
+        rowY += drawTableRow(
+          doc,
+          left,
+          rowY,
+          saleColumns,
+          {
+            soldOn: formatDateTimeCompact(item.soldAt || item.date),
+            boughtOn: formatDateTimeCompact(item.boughtAt),
+            productName: item.productName,
+            buyingPrice:
+              item.buyingPrice !== null && item.buyingPrice !== undefined
+                ? formatCurrency(item.buyingPrice)
+                : "-",
+            sellingPrice: formatCurrency(item.sellingPrice ?? item.price),
+            quantity: formatNumber(item.quantity),
+            subtotal: formatCurrency(item.subtotal),
+            profit: hasProfit ? formatCurrency(item.profit) : "-",
+            profitColor: hasProfit ? (item.profit >= 0 ? colors.positive : colors.negative) : null,
+          },
+          { fontSize: saleFontSize, striped: idx % 2 === 1, textColorKey: "profit" }
+        );
+
+        totalUnits += Number(item.quantity) || 0;
+        totalSubtotal += Number(item.subtotal) || 0;
+        totalProfit += Number(item.profit) || 0;
       });
 
+      if (rowY + 20 > bottomLimit) {
+        doc.addPage();
+        rowY = doc.page.margins.top;
+      }
+      rowY += drawTotalsRow(
+        doc,
+        left,
+        rowY,
+        saleColumns,
+        {
+          productName: "Total",
+          quantity: formatNumber(totalUnits),
+          subtotal: formatCurrency(totalSubtotal),
+          profit: `${formatCurrency(totalProfit)}${hasIncompleteProfit ? "*" : ""}`,
+        },
+        saleFontSize
+      );
+
       doc.y = rowY + 10;
+
+      if (hasIncompleteProfit) {
+        doc
+          .font(fonts.italic)
+          .fontSize(7.5)
+          .fillColor(colors.faint)
+          .text("* One or more sold items are missing cost data, so profit here is partial.", left);
+        doc.fillColor(colors.text);
+      }
     }
 
-    // ---- Footer ----
-    doc.moveDown(2);
-    doc
-      .font("Helvetica-Oblique")
-      .fontSize(8)
-      .fillColor("#999999")
-      .text(`Generated on ${new Date().toLocaleString("en-IN")}`, { align: "right" });
+    // ---- Footers (page numbers + generated timestamp on every page) ----
+    drawFooters(doc, { generatedAt: new Date().toLocaleString("en-IN") });
 
     doc.end();
   } catch (err) {
