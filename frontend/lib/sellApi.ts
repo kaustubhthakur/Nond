@@ -59,7 +59,7 @@ export function getSellOverview(storeId: string) {
   }>(`/sell-overview/store/${storeId}`);
 }
 
-// Flattens the tree into one array — the shape the sell page actually renders.
+
 export function flattenProducts(
   warehouses: SellOverviewWarehouse[]
 ): SellOverviewProduct[] {

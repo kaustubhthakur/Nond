@@ -153,8 +153,7 @@ export const shelfApi = {
       {
         method: "POST",
         body: {
-          // The shelf-level backend endpoint expects this field as "productId",
-          // even though the modal collects it as a product "name".
+      
           productId: String(payload.name).trim(),
           logo:
             payload.logo !== undefined &&
@@ -183,9 +182,7 @@ export const shelfApi = {
       `/store/${storeId}/warehouse/${warehouseId}/${shelfId}/products`
     ),
 
-  // sellingPrice is required — the backend uses it together with the
-  // product's stored cost price ("price") to compute and record profit,
-  // and rejects the request without a valid non-negative value.
+
   sellProduct: (
     storeId: string,
     warehouseId: string,

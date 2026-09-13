@@ -37,7 +37,7 @@ export interface Sale {
 export interface CartLine {
   product: SellOverviewProduct;
   quantity: number;
-  salePrice: number; // editable at point of sale; defaults to product.price
+  salePrice: number; 
 }
 
 export function getSales(storeId: string, limit = 100) {
@@ -46,8 +46,7 @@ export function getSales(storeId: string, limit = 100) {
   );
 }
 
-// lines.length === 1 for a quick single sell, > 1 for a bulk cart checkout.
-// Either way this writes exactly one Sale document.
+
 export function recordSale(
   storeId: string,
   lines: CartLine[],
@@ -165,7 +164,7 @@ export function normalizeSale(raw: any): Sale {
     };
   }
 
-  // Legacy single-product shape: { productName, price, quantity, ... }
+
   const price = Number(raw.price) || 0;
   const quantity = Number(raw.quantity) || 0;
   const costPrice = typeof raw.costPrice === "number" ? raw.costPrice : null;
