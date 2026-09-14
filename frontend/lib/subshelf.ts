@@ -142,7 +142,8 @@ export function sellSubShelfProduct(
   shelfId: string,
   subShelfId: string,
   productId: string,
-  quantity: number
+  quantity: number,
+  sellingPrice: number
 ) {
   return request<{
     success: boolean;
@@ -153,7 +154,7 @@ export function sellSubShelfProduct(
     `/subshelf/store/${storeId}/warehouse/${warehouseId}/shelf/${shelfId}/${subShelfId}/products/${productId}/sell`,
     {
       method: "POST",
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify({ quantity, sellingPrice }),
     }
   );
 }
