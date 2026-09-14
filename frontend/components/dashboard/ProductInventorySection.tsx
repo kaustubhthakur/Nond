@@ -176,7 +176,7 @@ export function ProductInventorySection({
               </span>
 
               <div className="flex shrink-0 items-center gap-1.5">
-                <button
+                {/* <button
                   type="button"
                   onClick={() => {
                     setAddTarget(product);
@@ -186,7 +186,7 @@ export function ProductInventorySection({
                   title="Add quantity"
                 >
                   <PackagePlus className="h-3.5 w-3.5" />
-                </button>
+                </button> */}
                 <button
                   type="button"
                   onClick={() =>

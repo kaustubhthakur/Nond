@@ -54,9 +54,7 @@ export function DashboardInventory() {
                 allProducts.push({
                   rowId: `shelf-${warehouse.id}-${shelf.id}-${product.id}`,
                   productId: product.id,
-                  // Backend currently stores the product's human-readable name
-                  // under "productId" (see addProduct in shelfApi.ts), not "name".
-                  // Fall back to that until the backend schema is fixed.
+          
                   productName: product.productId ?? product.name ?? "Product",
                   sku: product.sku ?? null,
                   quantity: Number(product.quantity ?? 0),
