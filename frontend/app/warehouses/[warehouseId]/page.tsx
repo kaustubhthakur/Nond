@@ -70,7 +70,6 @@ export default function WarehouseShelvesPage() {
     setShowCreateModal(false);
   };
 
- 
   const handleShelfChanged = useCallback(
     async (shelf: Shelf) => {
       if (!store) return;
@@ -80,7 +79,7 @@ export default function WarehouseShelvesPage() {
           prev.map((s) => (s.id === shelf.id ? res.shelf : s))
         );
       } catch {
-  
+        // silent refresh failure
       }
     },
     [store, warehouseId]
@@ -97,42 +96,95 @@ export default function WarehouseShelvesPage() {
     }
   };
 
+  // ---------- Loading / gating states ----------
+
   if (storeLoading || (loading && !warehouse)) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center text-sm text-ink/50">
-        Loading…
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-24 flex flex-col items-center justify-center gap-3">
+        <div className="h-5 w-5 rounded-full border-2 border-ink/15 border-t-accent animate-spin" />
+        <p className="text-sm text-ink/40">Loading…</p>
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center text-sm text-ink/50">
-        You need a store before you can view warehouses.
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-24">
+        <div className="mx-auto max-w-sm text-center border border-line rounded-xl bg-paper px-8 py-10">
+          <div className="mx-auto mb-4 h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
+            <svg
+              className="h-5 w-5 text-accent"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+            >
+              <path
+                d="M3 9.5 12 4l9 5.5V19a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5Z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <p className="text-sm text-ink/60 leading-relaxed">
+            You need a store before you can view warehouses.
+          </p>
+        </div>
       </div>
     );
   }
 
   const atShelfCapacity = shelfCapacity > 0 && availableShelves <= 0;
+  const usageRatio =
+    shelfCapacity > 0 ? Math.min(1, shelves.length / shelfCapacity) : 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
       <Link
         href="/warehouses"
-        className="text-xs text-ink/50 hover:text-accent transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-ink/45 hover:text-accent transition-colors"
       >
-        ← All warehouses
+        <svg
+          className="h-3 w-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        All warehouses
       </Link>
 
-      <div className="flex items-center justify-between mt-3 mb-8">
-        <div>
-          <h1 className="font-display italic text-2xl text-ink tracking-wide">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mt-4 mb-10 pb-8 border-b border-line">
+        <div className="min-w-0">
+          <h1 className="font-display italic text-3xl text-ink tracking-wide truncate">
             {warehouse?.name ?? "Warehouse"}
           </h1>
-          <p className="text-sm text-ink/50 mt-1">
-            {shelves.length} / {shelfCapacity} shelves used
-            {atShelfCapacity ? " — at capacity" : ""}
-          </p>
+
+          <div className="mt-3 flex items-center gap-3">
+            <p className="text-sm text-ink/50 whitespace-nowrap">
+              {shelves.length} / {shelfCapacity} shelves used
+            </p>
+
+            {shelfCapacity > 0 ? (
+              <div className="h-1.5 w-28 rounded-full bg-ink/[0.06] overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    atShelfCapacity ? "bg-rust" : "bg-accent"
+                  }`}
+                  style={{ width: `${usageRatio * 100}%` }}
+                />
+              </div>
+            ) : null}
+
+            {atShelfCapacity ? (
+              <span className="text-xs font-medium text-rust">
+                At capacity
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <button
@@ -144,27 +196,73 @@ export default function WarehouseShelvesPage() {
               ? "This warehouse has reached its shelf capacity"
               : undefined
           }
-          className="eyebrow border border-accent bg-accent text-paper px-4 py-2 hover:bg-transparent hover:text-accent transition-colors disabled:opacity-50"
+          className="group inline-flex items-center gap-2 self-start rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-paper shadow-sm shadow-accent/20 transition-all hover:bg-accent/90 hover:shadow-md hover:shadow-accent/25 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed"
         >
-          + New shelf
+          <svg
+            className="h-4 w-4 transition-transform group-hover:rotate-90"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+          </svg>
+          New shelf
         </button>
       </div>
 
+      {/* Error */}
       {error ? (
-        <div className="border border-rust/40 bg-rust/5 text-rust text-sm px-4 py-3 mb-6">
-          {error}
+        <div className="flex items-start gap-3 rounded-lg border border-rust/30 bg-rust/[0.06] text-rust text-sm px-4 py-3.5 mb-8">
+          <svg
+            className="h-4 w-4 mt-0.5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5M12 16h.01" strokeLinecap="round" />
+          </svg>
+          <p className="leading-relaxed">{error}</p>
         </div>
       ) : null}
 
+      {/* Content */}
       {loading ? (
-        <div className="text-center text-sm text-ink/50 py-16">
-          Loading shelves…
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-32 rounded-xl border border-line bg-ink/[0.02] animate-pulse"
+            />
+          ))}
         </div>
       ) : shelves.length === 0 ? (
-        <div className="border border-dashed border-line text-center py-16 px-6">
-          <p className="text-sm text-ink/60">
+        <div className="border border-dashed border-line rounded-xl text-center py-20 px-6">
+          <div className="mx-auto mb-4 h-11 w-11 rounded-full bg-ink/[0.04] flex items-center justify-center">
+            <svg
+              className="h-5 w-5 text-ink/35"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+            >
+              <path d="M4 4h16M4 10h16M4 16h16" strokeLinecap="round" />
+              <path d="M4 4v16M20 4v16" strokeLinecap="round" />
+            </svg>
+          </div>
+          <p className="text-sm text-ink/55 max-w-xs mx-auto leading-relaxed">
             No shelves yet. Create one to start storing products.
           </p>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            disabled={atShelfCapacity}
+            className="mt-5 text-sm font-medium text-accent hover:text-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Create your first shelf
+          </button>
         </div>
       ) : (
         <ShelfGrid
