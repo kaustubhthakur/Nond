@@ -124,15 +124,20 @@ export default function ReportsPage() {
     if (!report || !store) return;
     const rows = [
       ...report.purchases.items.map((item) => [
-        "Purchase", formatDate(item.date), item.productName, item.price, item.quantity, item.totalCost,
+        "Purchase", formatDate(item.date), item.productName, item.price, item.quantity, item.totalCost, "", "",
       ]),
-      ...report.sales.items.map((item) => [
-        "Sale", formatDate(item.date), item.productName, item.price, item.quantity, item.subtotal,
-      ]),
+      ...report.sales.items.map((item) => {
+        const costPerUnit =
+          item.profit !== null && item.quantity > 0 ? (item.subtotal - item.profit) / item.quantity : "";
+        return [
+          "Sale", formatDate(item.date), item.productName, item.price, item.quantity, item.subtotal,
+          costPerUnit, item.profit ?? "",
+        ];
+      }),
     ];
     downloadCsv(
       `${safeFileNamePart(store.store_name)}_${MONTH_NAMES[month - 1]}_${year}.csv`,
-      ["Type", "Date", "Product", "Price", "Units", "Amount"],
+      ["Type", "Date", "Product", "Price", "Units", "Amount", "Cost price", "Profit"],
       rows
     );
   };
@@ -363,17 +368,28 @@ export default function ReportsPage() {
                   { label: "Price", align: "right" },
                   { label: "Units", align: "right" },
                   { label: "Subtotal", align: "right" },
+                  { label: "Cost price", align: "right" },
                   { label: "Profit", align: "right" },
                 ]}
-                rows={report.sales.items.map((item) => [
-                  formatDate(item.date),
-                  item.productName,
-                  formatCurrency(item.price),
-                  item.quantity.toLocaleString("en-IN"),
-                  formatCurrency(item.subtotal),
-                  item.profit !== null ? formatCurrency(item.profit) : "-",
-                ])}
+                rows={report.sales.items.map((item) => {
+                  // Derived from existing fields so no backend change is needed:
+                  // cost per unit = (subtotal - profit) / quantity.
+                  const costPerUnit =
+                    item.profit !== null && item.quantity > 0
+                      ? (item.subtotal - item.profit) / item.quantity
+                      : null;
+                  return [
+                    formatDate(item.date),
+                    item.productName,
+                    formatCurrency(item.price),
+                    item.quantity.toLocaleString("en-IN"),
+                    formatCurrency(item.subtotal),
+                    costPerUnit !== null ? formatCurrency(costPerUnit) : "-",
+                    item.profit !== null ? formatCurrency(item.profit) : "-",
+                  ];
+                })}
                 cellTone={report.sales.items.map((item) => [
+                  undefined,
                   undefined,
                   undefined,
                   undefined,
@@ -382,7 +398,19 @@ export default function ReportsPage() {
                   item.profit !== null && item.profit < 0 ? "text-rust" : undefined,
                 ])}
                 totalsRow={
-                  saleTotals ? ["", "Total", "", saleTotals[0], saleTotals[1], saleTotals[2]] : undefined
+                  saleTotals
+                    ? [
+                        "",
+                        "Total",
+                        "",
+                        saleTotals[0],
+                        saleTotals[1],
+                        formatCurrency(
+                          report.sales.items.reduce((sum, i) => sum + (i.subtotal - (i.profit ?? 0)), 0)
+                        ),
+                        saleTotals[2],
+                      ]
+                    : undefined
                 }
                 scrollable
               />
