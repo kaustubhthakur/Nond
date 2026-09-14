@@ -9,7 +9,7 @@ import type { TopSellingSlice } from "@/types/dashboardStats";
 const DEFAULT_COLORS = ["#0ea5e9", "#1d4ed8", "#38bdf8", "#0284c7", "#7dd3fc"];
 const DEPTH = 0.45;
 const INNER_RADIUS = 1.15;
-const OUTER_RADIUS = 2.1;
+const OUTER_RADIUS = 1.75;
 const PAD_ANGLE = 0.045; // gap between slices — kills the z-fighting seam
 
 function formatNumber(value: number) {
@@ -249,13 +249,13 @@ export function TopSellingPieChart({ data }: { data: TopSellingSlice[] }) {
 
       <div className="flex flex-1 flex-col items-center gap-6 sm:flex-row sm:items-center">
         <div className="relative h-[210px] w-[210px] shrink-0">
-          <Canvas
-            shadows
-            dpr={[1, 2]}
-            gl={{ alpha: true, antialias: true }}
-            camera={{ position: [0, 4.6, 5.2], fov: 30 }}
-            style={{ background: "transparent" }}
-          >
+         <Canvas
+  shadows
+  dpr={[1, 2]}
+  gl={{ alpha: true, antialias: true }}
+  camera={{ position: [0, 5.4, 6.2], fov: 34 }}
+  style={{ background: "transparent" }}
+>
             <Suspense fallback={null}>
               <PieScene slices={slices} />
             </Suspense>
