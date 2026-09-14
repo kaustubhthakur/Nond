@@ -34,6 +34,22 @@ function safeFileNamePart(value: string) {
   return value.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
 }
 
+function toCsvValue(value: string | number) {
+  const str = String(value);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function downloadCsv(fileName: string, headers: string[], rows: (string | number)[][]) {
+  const lines = [headers, ...rows].map((row) => row.map(toCsvValue).join(","));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 type Column = { label: string; align?: "left" | "right" };
 
 export default function ReportsPage() {
@@ -47,26 +63,48 @@ export default function ReportsPage() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Guards against out-of-order responses when the period changes quickly
+  // or the store is switched mid-request.
+  const requestIdRef = useRef(0);
+
   const yearOptions = useMemo(() => {
     const years: number[] = [];
     for (let y = defaultYear; y >= defaultYear - 4; y--) years.push(y);
     return years;
   }, [defaultYear]);
 
-  const loadReport = async () => {
+  const isFuturePeriod = useMemo(() => {
+    const selected = year * 12 + month;
+    const current = defaultYear * 12 + defaultMonth;
+    return selected > current;
+  }, [year, month, defaultYear, defaultMonth]);
+
+  const loadReport = async (targetYear: number, targetMonth: number) => {
     if (!store) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      const data = await reportApi.getMonthlyReport(store.id, year, month);
+      const data = await reportApi.getMonthlyReport(store.id, targetYear, targetMonth);
+      if (requestId !== requestIdRef.current) return; // a newer request has since started
       setReport(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load report");
+      if (requestId !== requestIdRef.current) return;
+      setError(err instanceof Error ? err.message : "Couldn't load this report. Check your connection and try again.");
       setReport(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   };
+
+  // Reset and refetch whenever the store or period changes, so switching
+  // stores never leaves a previous store's numbers on screen.
+  useEffect(() => {
+    setReport(null);
+    setError(null);
+    if (store) loadReport(year, month);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id, year, month]);
 
   const handleDownload = async () => {
     if (!store) return;
@@ -76,10 +114,36 @@ export default function ReportsPage() {
       const fileNameHint = `${safeFileNamePart(store.store_name)}_${MONTH_NAMES[month - 1]}_${year}.pdf`;
       await reportApi.downloadMonthlyReportPdf(store.id, year, month, fileNameHint);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download report");
+      setError(err instanceof Error ? err.message : "Couldn't generate the PDF. Try again in a moment.");
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleExportCsv = () => {
+    if (!report || !store) return;
+    const rows = [
+      ...report.purchases.items.map((item) => [
+        "Purchase", formatDate(item.date), item.productName, item.price, item.quantity, item.totalCost,
+      ]),
+      ...report.sales.items.map((item) => [
+        "Sale", formatDate(item.date), item.productName, item.price, item.quantity, item.subtotal,
+      ]),
+    ];
+    downloadCsv(
+      `${safeFileNamePart(store.store_name)}_${MONTH_NAMES[month - 1]}_${year}.csv`,
+      ["Type", "Date", "Product", "Price", "Units", "Amount"],
+      rows
+    );
+  };
+
+  const shiftPeriod = (delta: number) => {
+    const total = year * 12 + (month - 1) + delta;
+    const nextYear = Math.floor(total / 12);
+    const nextMonth = (total % 12) + 1;
+    if (nextYear < defaultYear - 4) return;
+    setYear(nextYear);
+    setMonth(nextMonth);
   };
 
   if (!store) {
@@ -90,10 +154,26 @@ export default function ReportsPage() {
     );
   }
 
+  const busy = loading || downloading;
   const growth = report?.growth.growthPercent ?? 0;
   const growthTone = growth > 0 ? "text-emerald-700" : growth < 0 ? "text-rust" : "text-ink/50";
   const growthArrow = growth > 0 ? "↑" : growth < 0 ? "↓" : "→";
   const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
+
+  const purchaseTotals = report
+    ? [
+        report.purchases.items.reduce((sum, i) => sum + i.quantity, 0).toLocaleString("en-IN"),
+        formatCurrency(report.purchases.items.reduce((sum, i) => sum + i.totalCost, 0)),
+      ]
+    : null;
+
+  const saleTotals = report
+    ? [
+        report.sales.items.reduce((sum, i) => sum + i.quantity, 0).toLocaleString("en-IN"),
+        formatCurrency(report.sales.items.reduce((sum, i) => sum + i.subtotal, 0)),
+        formatCurrency(report.sales.items.reduce((sum, i) => sum + (i.profit ?? 0), 0)),
+      ]
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-10">
@@ -106,15 +186,26 @@ export default function ReportsPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-4 border-t border-b border-line py-4">
         <div className="flex flex-wrap items-end gap-3">
+          <button
+            type="button"
+            onClick={() => shiftPeriod(-1)}
+            disabled={busy}
+            aria-label="Previous month"
+            className="h-9 w-9 flex items-center justify-center border border-line text-ink/60 hover:text-ink hover:border-ink/30 transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <ChevronIcon direction="left" />
+          </button>
+
           <div className="flex flex-col gap-1">
-            <label htmlFor="report-month" className="eyebrow text-ink/50">
+            <label htmlFor="report-month" className="text-xs text-ink/50">
               Month
             </label>
             <select
               id="report-month"
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              disabled={busy}
+              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-60"
             >
               {MONTH_NAMES.map((name, idx) => (
                 <option key={name} value={idx + 1}>
@@ -125,14 +216,15 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="report-year" className="eyebrow text-ink/50">
+            <label htmlFor="report-year" className="text-xs text-ink/50">
               Year
             </label>
             <select
               id="report-year"
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              disabled={busy}
+              className="border border-line bg-paper px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-60"
             >
               {yearOptions.map((y) => (
                 <option key={y} value={y}>
@@ -141,23 +233,34 @@ export default function ReportsPage() {
               ))}
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={() => shiftPeriod(1)}
+            disabled={busy || isFuturePeriod}
+            aria-label="Next month"
+            className="h-9 w-9 flex items-center justify-center border border-line text-ink/60 hover:text-ink hover:border-ink/30 transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <ChevronIcon direction="right" />
+          </button>
         </div>
 
         <div className="flex items-end gap-3">
-          <button
-            type="button"
-            onClick={loadReport}
-            disabled={loading}
-            className="inline-flex items-center gap-2 bg-ink text-paper px-4 py-2 text-sm hover:bg-ink/90 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-          >
-            {loading && <Spinner className="text-paper" />}
-            {loading ? "Loading…" : "View report"}
-          </button>
+          {report && (
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={busy}
+              className="inline-flex items-center gap-2 border border-line text-ink/70 px-4 py-2 text-sm hover:border-ink/30 hover:text-ink transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              Export CSV
+            </button>
+          )}
 
           <button
             type="button"
             onClick={handleDownload}
-            disabled={downloading}
+            disabled={busy}
             className="inline-flex items-center gap-2 border border-accent/40 text-accent px-4 py-2 text-sm hover:border-accent transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             {downloading ? <Spinner className="text-accent" /> : <DownloadIcon />}
@@ -166,24 +269,33 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      <div role="status" aria-live="polite" className="sr-only">
+        {loading ? `Loading report for ${monthLabel}` : error ? error : report ? `Report loaded for ${monthLabel}` : ""}
+      </div>
+
       {error && (
-        <div className="border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
-          {error}
+        <div className="flex items-start justify-between gap-4 border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => loadReport(year, month)}
+            className="shrink-0 underline underline-offset-2 hover:no-underline"
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {loading && !report && <ReportSkeleton />}
 
       {!loading && !report && !error && (
-        <p className="text-ink/50 text-sm italic">
-          Choose a month and year, then select "View report" to see the numbers.
-        </p>
+        <p className="text-ink/50 text-sm italic">No report data for {monthLabel} yet.</p>
       )}
 
       {report && (
-        <div className="space-y-10">
+        <div className="space-y-10" aria-busy={loading}>
           <section>
-            <p className="eyebrow text-ink/50">{monthLabel}</p>
+            <p className="text-xs text-ink/50">{monthLabel}</p>
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-1">
               <span className="font-display italic text-4xl sm:text-5xl text-ink tabular-nums">
                 {formatCurrency(report.sales.totalRevenue)}
@@ -234,6 +346,7 @@ export default function ReportsPage() {
                   item.quantity.toLocaleString("en-IN"),
                   formatCurrency(item.totalCost),
                 ])}
+                totalsRow={purchaseTotals ? ["", "Total", "", purchaseTotals[0], purchaseTotals[1]] : undefined}
               />
             )}
           </section>
@@ -268,6 +381,9 @@ export default function ReportsPage() {
                   undefined,
                   item.profit !== null && item.profit < 0 ? "text-rust" : undefined,
                 ])}
+                totalsRow={
+                  saleTotals ? ["", "Total", "", saleTotals[0], saleTotals[1], saleTotals[2]] : undefined
+                }
                 scrollable
               />
             )}
@@ -318,6 +434,20 @@ function DownloadIcon() {
   );
 }
 
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d={direction === "left" ? "M10 3.5L5.5 8l4.5 4.5" : "M6 3.5L10.5 8L6 12.5"}
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ReportSkeleton() {
   return (
     <div className="space-y-10 animate-pulse" aria-hidden="true">
@@ -345,11 +475,13 @@ function ReportTable({
   columns,
   rows,
   cellTone,
+  totalsRow,
   scrollable = false,
 }: {
   columns: Column[];
   rows: string[][];
   cellTone?: (string | undefined)[][];
+  totalsRow?: string[];
   scrollable?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -366,7 +498,7 @@ function ReportTable({
     updateFade();
     window.addEventListener("resize", updateFade);
     return () => window.removeEventListener("resize", updateFade);
-   
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollable, rows.length]);
 
   return (
@@ -411,6 +543,22 @@ function ReportTable({
               </tr>
             ))}
           </tbody>
+          {totalsRow && (
+            <tfoot>
+              <tr className={`font-medium text-ink ${scrollable ? "sticky bottom-0" : ""} bg-paper`}>
+                {totalsRow.map((cell, i) => (
+                  <td
+                    key={i}
+                    className={`px-3 py-2 border-t border-line ${
+                      columns[i]?.align === "right" ? "text-right" : "text-left"
+                    }`}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
       {scrollable && showFade && (
