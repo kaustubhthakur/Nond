@@ -69,8 +69,7 @@ function levelLabel(level: SellOverviewProduct["level"]) {
   return level === "shelf" ? "Shelf" : level === "subShelf" ? "Sub-shelf" : "Box";
 }
 
-// Backend quirk: a bulk checkout currently writes both a per-item Sale row
-// (as a side effect of each sellAtLocation call below) AND one combined
+
 // multi-item Sale row (from recordSale). Until that's fixed server-side,
 // collapse the duplicates here so a single checkout only ever renders as
 // one row in Recent Sales.
@@ -121,10 +120,7 @@ function dedupeSales(sales: Sale[]): Sale[] {
   return sorted.filter((s) => !drop.has(s.id));
 }
 
-// sellingPrice is required for every level — the backend uses it (together
-// with the stored cost price) to compute and record profit on the sale, and
-// to validate the request. Without it the shelf/subShelf/box endpoints
-// reject the call with "Selling price must be a valid non-negative number".
+
 async function sellAtLocation(
   storeId: string,
   product: SellOverviewProduct,
@@ -230,8 +226,7 @@ function QtyStepper({
   );
 }
 
-// Small editable price input, used at point-of-sale so the price charged
-// (CartLine.salePrice) can differ from the catalog price on the product.
+
 function PriceInput({
   value,
   onChange,
@@ -387,7 +382,6 @@ export default function SellPage() {
     return shelfStats.find((s) => s.key === resolvedShelfKey)?.items ?? [];
   }, [shelfStats, resolvedShelfKey]);
 
-  // ---- Metrics ----
 
   const totalWarehouses = warehouseStats.length;
   const totalSkus = filteredProducts.length;
@@ -400,7 +394,6 @@ export default function SellPage() {
     (p) => p.quantity <= LOW_STOCK_THRESHOLD
   ).length;
 
-  // ---- Single quick-sell modal ----
 
   const openSellModal = (product: SellOverviewProduct) => {
     if (!product.id) {
@@ -464,7 +457,6 @@ export default function SellPage() {
     }
   };
 
-  // ---- Bulk cart actions ----
 
   const addToCart = (product: SellOverviewProduct) => {
     if (!product.id) {
@@ -1062,7 +1054,7 @@ export default function SellPage() {
         )}
       </section>
 
-      {/* Single quick-sell modal */}
+     
       {selected && (
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-20 px-4">
           <div className="bg-paper rounded-xl shadow-xl ring-1 ring-ink/5 max-w-sm w-full p-6 space-y-5">
@@ -1167,7 +1159,7 @@ export default function SellPage() {
         </div>
       )}
 
-      {/* Floating bulk cart bar */}
+    
       {cartCount > 0 && !cartOpen && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-md px-4">
           <button
@@ -1186,7 +1178,7 @@ export default function SellPage() {
         </div>
       )}
 
-      {/* Bulk checkout modal */}
+  
       {cartOpen && (
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-20 px-4">
           <div className="bg-paper rounded-xl shadow-xl ring-1 ring-ink/5 max-w-lg w-full p-6 space-y-5 max-h-[85vh] overflow-y-auto">
