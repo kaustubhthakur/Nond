@@ -38,7 +38,6 @@ function toDatetimeLocalValue(d: Date) {
   )}:${pad(d.getMinutes())}`;
 }
 
-
 function cartKey(p: SellOverviewProduct) {
   return [p.level, p.id, p.warehouseId, p.shelfId, p.subShelfId, p.boxId]
     .map((v) => v ?? "")
@@ -68,6 +67,58 @@ function levelBadgeClass(level: SellOverviewProduct["level"]) {
 
 function levelLabel(level: SellOverviewProduct["level"]) {
   return level === "shelf" ? "Shelf" : level === "subShelf" ? "Sub-shelf" : "Box";
+}
+
+// Backend quirk: a bulk checkout currently writes both a per-item Sale row
+// (as a side effect of each sellAtLocation call below) AND one combined
+// multi-item Sale row (from recordSale). Until that's fixed server-side,
+// collapse the duplicates here so a single checkout only ever renders as
+// one row in Recent Sales.
+function dedupeSales(sales: Sale[]): Sale[] {
+  const sameItem = (
+    a: Sale["items"][number],
+    b: Sale["items"][number]
+  ) =>
+    a.productName === b.productName &&
+    a.warehouseName === b.warehouseName &&
+    a.quantity === b.quantity &&
+    a.price === b.price;
+
+  const sorted = [...sales].sort(
+    (a, b) =>
+      new Date(b.soldAt ?? 0).getTime() - new Date(a.soldAt ?? 0).getTime()
+  );
+
+  const drop = new Set<string>();
+
+  for (const bulk of sorted) {
+    if (bulk.items.length < 2 || drop.has(bulk.id)) continue;
+    const bulkTime = new Date(bulk.soldAt ?? 0).getTime();
+    const remaining = [...bulk.items];
+
+    for (const candidate of sorted) {
+      if (
+        candidate.id === bulk.id ||
+        candidate.items.length !== 1 ||
+        drop.has(candidate.id)
+      )
+        continue;
+
+      // Same checkout batch = recorded within a few seconds of each other.
+      const candidateTime = new Date(candidate.soldAt ?? 0).getTime();
+      if (Math.abs(candidateTime - bulkTime) > 60_000) continue;
+
+      const matchIdx = remaining.findIndex((it) =>
+        sameItem(it, candidate.items[0])
+      );
+      if (matchIdx !== -1) {
+        remaining.splice(matchIdx, 1);
+        drop.add(candidate.id);
+      }
+    }
+  }
+
+  return sorted.filter((s) => !drop.has(s.id));
 }
 
 // sellingPrice is required for every level — the backend uses it (together
@@ -220,14 +271,12 @@ export default function SellPage() {
   const [activeWarehouse, setActiveWarehouse] = useState<string | null>(null);
   const [activeShelfKey, setActiveShelfKey] = useState<string | null>(null);
 
-
   const [selected, setSelected] = useState<SellOverviewProduct | null>(null);
   const [sellQty, setSellQty] = useState(1);
   const [sellPrice, setSellPrice] = useState<number>(0);
   const [sellDate, setSellDate] = useState(() => toDatetimeLocalValue(new Date()));
   const [selling, setSelling] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
 
   const [cart, setCart] = useState<Map<string, CartLine>>(new Map());
   const [cartOpen, setCartOpen] = useState(false);
@@ -239,14 +288,14 @@ export default function SellPage() {
 
   const [expandedSales, setExpandedSales] = useState<Set<string>>(new Set());
 
- const loadOverview = async (id: string) => {
-  const [overview, salesRes] = await Promise.all([
-    getSellOverview(id),
-    getSales(id),
-  ]);
-  setProducts(flattenProducts(overview.warehouses));
-  setSales(salesRes.sales.map(normalizeSale));
-};
+  const loadOverview = async (id: string) => {
+    const [overview, salesRes] = await Promise.all([
+      getSellOverview(id),
+      getSales(id),
+    ]);
+    setProducts(flattenProducts(overview.warehouses));
+    setSales(dedupeSales(salesRes.sales.map(normalizeSale)));
+  };
 
   useEffect(() => {
     if (!storeId) return;
@@ -404,7 +453,7 @@ export default function SellPage() {
         soldAtIso
       );
 
-      setSales((prev) => [sale, ...prev]);
+      setSales((prev) => dedupeSales([sale, ...prev]));
 
       await loadOverview(storeId);
       closeModal();
@@ -508,7 +557,6 @@ export default function SellPage() {
     setCheckoutError(null);
 
     try {
-     
       for (const line of cartLines) {
         try {
           await sellAtLocation(storeId, line.product, line.quantity, line.salePrice);
@@ -520,7 +568,7 @@ export default function SellPage() {
       }
 
       const { sale } = await recordSale(storeId, cartLines, soldAtIso);
-      setSales((prev) => [sale, ...prev]);
+      setSales((prev) => dedupeSales([sale, ...prev]));
 
       clearCart();
       setCartOpen(false);
@@ -871,10 +919,6 @@ export default function SellPage() {
                       .map((i) => i.productName)
                       .join(", ");
                     const extraCount = sale.items.length - 2;
-                    // Price / Selling price only make sense as single figures
-                    // when the sale has exactly one product line. A bulk sale
-                    // (multiple different products, still one row) shows a
-                    // dash here — the per-item breakdown below covers it.
                     const singleItem =
                       sale.items.length === 1 ? sale.items[0] : null;
 
