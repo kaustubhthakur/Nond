@@ -878,10 +878,22 @@ export default function SellPage() {
           </div>
         ) : (
           <div className="rounded-lg border border-line bg-paper shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+            {/*
+              Scrollable body capped to roughly 10 rows (~52px/row).
+              Header stays pinned via `sticky top-0` on <thead> so column
+              labels remain visible while the body scrolls. The thin,
+              rounded scrollbar keeps this feeling like a proper SaaS
+              data table rather than a raw overflow box; the webkit
+              classes cover Chrome/Safari/Edge and the inline style
+              covers Firefox.
+            */}
+            <div
+              className="overflow-x-auto overflow-y-auto max-h-[520px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-ink/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-ink/25"
+              style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.15) transparent" }}
+            >
               <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-line text-left text-ink/45 bg-ink/[0.015]">
+                <thead className="sticky top-0 z-10 bg-paper">
+                  <tr className="border-b border-line text-left text-ink/45 bg-ink/[0.015] backdrop-blur-sm">
                     <th className="px-4 py-2.5 font-medium text-xs">Products</th>
                     <th className="px-4 py-2.5 font-medium text-xs text-right">
                       Units
