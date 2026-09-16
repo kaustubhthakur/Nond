@@ -2,12 +2,9 @@ const Warehouse = require("../models/Warehouse");
 const Store = require("../models/Store");
 
 const SHELF_CAPACITY_OPTIONS = [
-  15,
-  25,
-  40,
-  60,
-  80,
-  100,
+5,
+10,
+15
 ];
 
 const MAX_SUBSHELVES_PER_SHELF = 10;
