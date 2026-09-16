@@ -1,10 +1,13 @@
-
 "use client";
 
 import { useOnboardingGuard } from "@/hooks/useOnboardingGuard";
+import { useRequireAuth } from "@/lib/use-require-auth";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { checking } = useOnboardingGuard("require-store");
+  const { checking: authChecking } = useRequireAuth();
+  const { checking: onboardingChecking } = useOnboardingGuard("require-store");
+
+  const checking = authChecking || onboardingChecking;
 
   if (checking) {
     return (
