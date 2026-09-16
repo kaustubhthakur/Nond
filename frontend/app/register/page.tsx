@@ -54,8 +54,8 @@ export default function RegisterPage() {
   return (
     <PageShell>
       <LedgerCard
-        step="Step 01 — Open an account"
-        title="Create your ledger"
+        step=""
+        title="Open New Account"
         subtitle="A record is kept of everyone who enters."
       >
         <form onSubmit={handleSubmit}>

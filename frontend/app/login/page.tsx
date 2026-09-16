@@ -49,7 +49,7 @@ export default function LoginPage() {
   return (
     <PageShell>
       <LedgerCard
-        step="Step 01 — Credentials"
+        step=""
         title="Sign in"
         subtitle="We'll send a one-time code to confirm it's you."
       >
