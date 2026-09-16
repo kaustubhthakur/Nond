@@ -6,6 +6,7 @@ import { authApi } from "@/lib/api";
 import { getMyStores } from "@/lib/store";
 import { ApiError, OtpMethod } from "@/types/auth";
 import { useAuth } from "@/context/AuthContext";
+import { useRedirectIfAuthed } from "@/lib/use-redirect-if-authed";
 import {
   ErrorNote,
   LedgerCard,
@@ -19,6 +20,7 @@ function VerifyOtpForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { setSession } = useAuth();
+  const { checking } = useRedirectIfAuthed();
 
   const userId = params.get("userId") ?? "";
   const method = (params.get("method") as OtpMethod) ?? "email";
@@ -31,8 +33,8 @@ function VerifyOtpForm() {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    if (!userId) router.replace("/login");
-  }, [userId, router]);
+    if (!checking && !userId) router.replace("/login");
+  }, [checking, userId, router]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -56,7 +58,7 @@ function VerifyOtpForm() {
         
       }
 
-      setTimeout(() => router.push(destination), 450);
+      setTimeout(() => router.replace(destination), 450);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Verification failed.");
       setOtp("");
@@ -81,6 +83,8 @@ function VerifyOtpForm() {
       }
     }
   };
+
+  if (checking) return null;
 
   return (
     <LedgerCard
