@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { ApiError } from "@/types/auth";
+import { useRedirectIfAuthed } from "@/lib/use-redirect-if-authed";
 import {
   ErrorNote,
   Field,
@@ -15,6 +16,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { checking } = useRedirectIfAuthed();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -46,10 +48,12 @@ export default function LoginPage() {
     }
   };
 
+  if (checking) return null; // avoid flashing the form for a logged-in user
+
   return (
     <PageShell>
       <LedgerCard
-        step=""
+        step="Step 1 of 2"
         title="Sign in"
         subtitle="We'll send a one-time code to confirm it's you."
       >

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { ApiError } from "@/types/auth";
+import { useRedirectIfAuthed } from "@/lib/use-redirect-if-authed";
 import {
   ErrorNote,
   Field,
@@ -16,6 +17,7 @@ import {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { checking } = useRedirectIfAuthed();
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -50,6 +52,8 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (checking) return null;
 
   return (
     <PageShell>
