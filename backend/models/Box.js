@@ -515,15 +515,7 @@ exports.addProduct = async (
   });
 };
 
-/**
- * `sellingPrice` is the price it was actually sold at (per unit).
- * The product's stored `price` is its buying/cost price, so
- * profit = (sellingPrice - costPrice) * quantity. A sale record is
- * written in the same transaction capturing costPrice, sellingPrice,
- * profit, and the bought-at / sold-at timestamps.
- *
- * Returns { id, remainingQuantity, soldQuantity, deleted, profit, sale }.
- */
+
 exports.sellProduct = async (
   storeId,
   warehouseId,

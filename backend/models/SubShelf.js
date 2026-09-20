@@ -196,10 +196,7 @@ exports.updateSubShelf = async (
   };
 };
 
-/**
- * Deletes a sub-shelf and gives back whatever product-space it was
- * consuming on the parent shelf, in a single transaction.
- */
+
 exports.deleteSubShelf = async (
   storeId,
   warehouseId,
@@ -257,17 +254,7 @@ exports.deleteSubShelf = async (
   };
 };
 
-/**
- * Adds a product straight onto a sub-shelf (no box involved).
- * Runs in a transaction so concurrent adds can't push productQuantity
- * past capacity — and rolls the same quantity up onto the parent
- * shelf's own productQuantity/availableCapacity in the same
- * transaction, so shelf-level and sub-shelf-level numbers can never
- * drift apart.
- *
- * `price` here is the buying/cost price - it's kept on the product
- * document so sellProduct() below can compute profit later.
- */
+
 exports.addProduct = async (
   storeId,
   warehouseId,
@@ -373,23 +360,7 @@ exports.addProduct = async (
   });
 };
 
-/**
- * Subtracts sold/removed stock from a product that lives directly
- * on a sub-shelf (no box). Mirrors Box.sellProduct but one level
- * shallower — rolls the amount back off the parent shelf too.
- *
- * `sellingPrice` is the price it was actually sold at (per unit).
- * The product's stored `price` is treated as its buying/cost price,
- * so profit = (sellingPrice - costPrice) * quantity. A sale record
- * is written in the same transaction, capturing costPrice,
- * sellingPrice, profit, and the bought-at / sold-at timestamps, so
- * monthly reports can show all of that per item.
- *
- * If the product's quantity hits 0, the product document is
- * deleted entirely.
- *
- * Returns { id, remainingQuantity, soldQuantity, deleted, profit, sale }.
- */
+
 exports.sellProduct = async (
   storeId,
   warehouseId,

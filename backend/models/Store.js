@@ -266,12 +266,7 @@ exports.deleteStore = async (storeId, userId) => {
   return result.rows[0];
 };
 
-/**
- * Warehouses/shelves/sub-shelves/boxes all live in Firestore (see
- * models/Warehouse.js, Shelf.js, SubShelf.js, Box.js), not Postgres —
- * so this walks the same tree those models read/write, counting as
- * it goes, instead of querying Postgres tables that don't exist.
- */
+
 exports.getStoreStats = async (storeId) => {
   const warehousesSnap = await db
     .collection("stores")

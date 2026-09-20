@@ -63,14 +63,7 @@ const getStoreStockSnapshot = async (storeId) => {
   return { totalUnitsAvailable, warehouses };
 };
 
-/**
- * Builds the full monthly report for a store.
- *
- * @param {Object} params
- * @param {string} params.storeId
- * @param {number} params.year
- * @param {number} params.month  1-12
- */
+
 exports.generateMonthlyReport = async ({ storeId, year, month }) => {
   const { start, end } = getMonthRange(year, month);
   const prev = getPreviousMonth(year, month);
@@ -184,7 +177,7 @@ exports.generateMonthlyReport = async ({ storeId, year, month }) => {
       ? 100
       : 0;
 
-  // ---- Purchases side (units bought, cost, date & time bought) ----
+
   const boughtItems = [];
   let totalPurchaseCost = 0;
   let totalUnitsBought = 0;
