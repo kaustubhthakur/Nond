@@ -14,19 +14,19 @@ const {
   completeOnboarding,
 } = require("../controllers/users");
 
-// Get all users
+
 router.get("/", verifyToken, getAllUsers);
 
-// Get single user
+
 router.get("/:id", verifyToken, getUser);
 
-// Update user
+
 router.patch("/:id", verifyToken, updateUser);
 
-// Complete onboarding
+
 router.patch("/:id/onboarding", verifyToken, completeOnboarding);
 
-// Upload / replace user avatar
+
 router.put(
   "/:id/avatar",
   verifyToken,
@@ -45,21 +45,21 @@ router.put(
     try {
       const { id } = req.params;
 
-      // Make sure the logged-in user can only update their own avatar
+      
       if (String(req.user.id) !== String(id)) {
         return res.status(403).json({
           error: "You are not authorized to update this user's avatar",
         });
       }
 
-      // Make sure a file was uploaded
+     
       if (!req.file) {
         return res.status(400).json({
           error: "No avatar file was uploaded",
         });
       }
 
-      // Upload image directly to Cloudinary
+     
       const result = await uploadToCloudinary(
         req.file.buffer,
         "my-app/avatars"
@@ -67,7 +67,7 @@ router.put(
 
       const avatarUrl = result.secure_url;
 
-      // Save Cloudinary URL in database
+      
       const user = await User.updateUser(id, {
         avatar: avatarUrl,
       });
