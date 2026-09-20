@@ -6,9 +6,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import { uploadAvatar } from "@/lib/user";
 import { VerifyField } from "@/components/VerifyField";
-import { Store, ShieldCheck, Mail, Phone, Calendar } from "lucide-react";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081";
+import {
+  Store,
+  ShieldCheck,
+  Mail,
+  Phone,
+  Calendar,
+} from "lucide-react";
 
 function StatCard({
   label,
@@ -28,6 +32,7 @@ function StatCard({
           (value ?? 0).toLocaleString()
         )}
       </span>
+
       <span className="eyebrow text-ink/45 text-[10px] tracking-widest uppercase">
         {label}
       </span>
@@ -50,15 +55,25 @@ function DetailRow({
         {icon}
         {label}
       </dt>
-      <dd className="text-sm text-ink font-medium">{children}</dd>
+
+      <dd className="text-sm text-ink font-medium">
+        {children}
+      </dd>
     </div>
   );
 }
 
-function formatDate(value: string | number | Date | null | undefined) {
+function formatDate(
+  value: string | number | Date | null | undefined
+) {
   if (!value) return "—";
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
   return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "long",
@@ -67,11 +82,28 @@ function formatDate(value: string | number | Date | null | undefined) {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading, refreshUser } = useAuth();
-  const { store, stats, loadingStats, statsError, refetchStats } = useStore();
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    user,
+    isLoading,
+    refreshUser,
+  } = useAuth();
+
+  const {
+    store,
+    stats,
+    loadingStats,
+    statsError,
+    refetchStats,
+  } = useStore();
+
+  const [uploadingAvatar, setUploadingAvatar] =
+    useState(false);
+
+  const [avatarError, setAvatarError] =
+    useState<string | null>(null);
+
+  const fileInputRef =
+    useRef<HTMLInputElement>(null);
 
   if (isLoading) {
     return (
@@ -89,38 +121,57 @@ export default function ProfilePage() {
     );
   }
 
-  const initials = user.username.slice(0, 2).toUpperCase();
+  const initials = user.username
+    .slice(0, 2)
+    .toUpperCase();
 
   const handleAvatarClick = () => {
     if (uploadingAvatar) return;
+
     fileInputRef.current?.click();
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
+
     setUploadingAvatar(true);
     setAvatarError(null);
+
     try {
       await uploadAvatar(user.id, file);
       await refreshUser();
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : "Upload failed");
+      setAvatarError(
+        err instanceof Error
+          ? err.message
+          : "Upload failed"
+      );
     } finally {
       setUploadingAvatar(false);
       e.target.value = "";
     }
   };
 
-  const fullyVerified = user.email_verified && user.phone_verified;
+  const fullyVerified =
+    user.email_verified &&
+    user.phone_verified;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+
       {/* Hero header */}
       <section className="rounded-2xl border border-line bg-paper overflow-hidden shadow-sm">
+
         <div className="h-24 bg-gradient-to-r from-accent/20 via-accent/5 to-transparent" />
+
         <div className="px-6 sm:px-8 pb-7 -mt-11 flex flex-col sm:flex-row sm:items-end gap-5">
+
           <div className="flex flex-col items-start gap-1.5">
+
             <button
               type="button"
               onClick={handleAvatarClick}
@@ -128,10 +179,12 @@ export default function ProfilePage() {
               className="flex h-24 w-24 items-center justify-center rounded-full bg-accent/10 border-4 border-paper shadow-md ring-1 ring-line font-mono text-2xl text-accent overflow-hidden hover:ring-accent transition-all"
             >
               {uploadingAvatar ? (
-                <span className="text-xs text-accent">…</span>
+                <span className="text-xs text-accent">
+                  …
+                </span>
               ) : user.avatar ? (
                 <Image
-                  src={`${API_BASE_URL}${user.avatar}`}
+                  src={user.avatar}
                   alt={`${user.username}'s avatar`}
                   width={96}
                   height={96}
@@ -141,10 +194,14 @@ export default function ProfilePage() {
                 initials
               )}
             </button>
+
             {avatarError && (
-              <p className="text-xs text-rust max-w-[160px]">{avatarError}</p>
+              <p className="text-xs text-rust max-w-[160px]">
+                {avatarError}
+              </p>
             )}
           </div>
+
           <input
             ref={fileInputRef}
             type="file"
@@ -152,11 +209,15 @@ export default function ProfilePage() {
             className="hidden"
             onChange={handleAvatarChange}
           />
+
           <div className="pb-1 min-w-0 flex-1">
+
             <div className="flex items-center gap-2 flex-wrap">
+
               <h1 className="font-display italic text-2xl text-ink tracking-wide truncate">
                 {user.username}
               </h1>
+
               {fullyVerified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700">
                   <ShieldCheck className="h-3 w-3" />
@@ -164,7 +225,11 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
-            <p className="text-sm text-ink/55 truncate mt-0.5">{user.email}</p>
+
+            <p className="text-sm text-ink/55 truncate mt-0.5">
+              {user.email}
+            </p>
+
             {store?.store_name && (
               <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-ink/45">
                 <Store className="h-3 w-3" />
@@ -177,45 +242,95 @@ export default function ProfilePage() {
 
       {/* Account details */}
       <section className="space-y-4">
+
         <h2 className="eyebrow text-ink/50 text-xs tracking-widest uppercase">
           Account details
         </h2>
+
         <div className="rounded-xl border border-line bg-paper px-6 shadow-sm">
+
           <dl>
-            <DetailRow icon={<Mail className="h-3.5 w-3.5" />} label="Email">
+
+            <DetailRow
+              icon={
+                <Mail className="h-3.5 w-3.5" />
+              }
+              label="Email"
+            >
               {user.email || "—"}
             </DetailRow>
+
             <DetailRow label="Email verified">
-              <VerifyField type="email" userId={user.id} verified={!!user.email_verified} />
+              <VerifyField
+                type="email"
+                userId={user.id}
+                verified={!!user.email_verified}
+              />
             </DetailRow>
-            <DetailRow icon={<Phone className="h-3.5 w-3.5" />} label="Phone">
+
+            <DetailRow
+              icon={
+                <Phone className="h-3.5 w-3.5" />
+              }
+              label="Phone"
+            >
               {user.phone || "—"}
             </DetailRow>
+
             <DetailRow label="Phone verified">
-              <VerifyField type="phone" userId={user.id} verified={!!user.phone_verified} />
+              <VerifyField
+                type="phone"
+                userId={user.id}
+                verified={!!user.phone_verified}
+              />
             </DetailRow>
-            <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label="Member since">
+
+            <DetailRow
+              icon={
+                <Calendar className="h-3.5 w-3.5" />
+              }
+              label="Member since"
+            >
               {formatDate(user.created_at)}
             </DetailRow>
+
           </dl>
         </div>
       </section>
 
       {/* Store details */}
       <section className="space-y-4">
+
         <h2 className="eyebrow text-ink/50 text-xs tracking-widest uppercase">
           Store
         </h2>
+
         <div className="rounded-xl border border-line bg-paper px-6 shadow-sm">
+
           {store ? (
             <dl>
-              <DetailRow icon={<Store className="h-3.5 w-3.5" />} label="Store name">
+
+              <DetailRow
+                icon={
+                  <Store className="h-3.5 w-3.5" />
+                }
+                label="Store name"
+              >
                 {store.store_name || "—"}
               </DetailRow>
-              <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label="Established">
-               
-                {formatDate((store as any).createdAt ?? (store as any).created_at)}
+
+              <DetailRow
+                icon={
+                  <Calendar className="h-3.5 w-3.5" />
+                }
+                label="Established"
+              >
+                {formatDate(
+                  (store as any).createdAt ??
+                    (store as any).created_at
+                )}
               </DetailRow>
+
             </dl>
           ) : (
             <p className="py-6 text-center text-sm text-ink/50">
@@ -227,6 +342,7 @@ export default function ProfilePage() {
         {statsError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
             <span>{statsError}</span>
+
             <button
               type="button"
               onClick={refetchStats}
@@ -237,19 +353,37 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {store && !statsError && stats && (
-        
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {Object.entries(stats).map(([key, value]) => (
-              <StatCard
-                key={key}
-                label={key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}
-                value={typeof value === "number" ? value : undefined}
-                loading={loadingStats}
-              />
-            ))}
-          </div>
-        )}
+        {store &&
+          !statsError &&
+          stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+              {Object.entries(stats).map(
+                ([key, value]) => (
+                  <StatCard
+                    key={key}
+                    label={key
+                      .replace(
+                        /([A-Z])/g,
+                        " $1"
+                      )
+                      .replace(
+                        /^./,
+                        (c) => c.toUpperCase()
+                      )}
+                    value={
+                      typeof value === "number"
+                        ? value
+                        : undefined
+                    }
+                    loading={loadingStats}
+                  />
+                )
+              )}
+
+            </div>
+          )}
+
       </section>
     </div>
   );
