@@ -1,10 +1,8 @@
 const { db } = require("../firebase/index.js");
 const WAREHOUSE_SHELF_OPTIONS = [
-  10,
-  15,
-  25,
-  40,
-  50,
+5,
+10,
+15
 ];
 
 const getWarehousesRef = (storeId) => {
