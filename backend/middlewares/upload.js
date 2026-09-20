@@ -6,9 +6,11 @@ const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
+
   limits: {
     fileSize: 5 * 1024 * 1024, // 5 MB
   },
+
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
       return cb(new Error("Only image files are allowed"));
@@ -27,14 +29,16 @@ const uploadToCloudinary = (buffer, folder) => {
       },
       (error, result) => {
         if (error) {
-          reject(error);
-        } else {
-          resolve(result);
+          return reject(error);
         }
+
+        resolve(result);
       }
     );
 
-    streamifier.createReadStream(buffer).pipe(stream);
+    streamifier
+      .createReadStream(buffer)
+      .pipe(stream);
   });
 };
 

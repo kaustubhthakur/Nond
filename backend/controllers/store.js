@@ -1,5 +1,8 @@
 const Store = require("../models/Store");
 const { db } = require("../firebase/index.js");
+
+const { uploadToCloudinary } = require("../middlewares/upload");
+
 const BUSINESS_TYPES = [
   "retail",
   "wholesale",
@@ -307,38 +310,62 @@ exports.updateStore = async (req, res) => {
   }
 };
 
-exports.uploadStoreLogo = (req, res) => {
-  const userId = req.user?.id;
-  const { storeId } = req.params;
 
-  if (!userId) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
+exports.uploadStoreLogo = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { storeId } = req.params;
 
-  Store.getStoreById(storeId, userId)
-    .then((existingStore) => {
-      if (!existingStore) {
-        return res.status(404).json({ error: "Store not found" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ error: "No logo file was uploaded" });
-      }
-
-      const logoUrl = `/uploads/store-logos/${req.file.filename}`;
-
-      return Store.updateStoreLogo(storeId, userId, logoUrl).then((updatedStore) => {
-        return res.status(200).json({
-          success: true,
-          message: "Logo uploaded successfully",
-          store: updatedStore,
-        });
+    if (!userId) {
+      return res.status(401).json({
+        error: "Not authenticated",
       });
-    })
-    .catch((err) => {
-      console.error("Upload logo error:", err);
-      return res.status(500).json({ error: "Failed to upload logo" });
+    }
+
+    const existingStore = await Store.getStoreById(
+      storeId,
+      userId
+    );
+
+    if (!existingStore) {
+      return res.status(404).json({
+        error: "Store not found",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        error: "No logo file was uploaded",
+      });
+    }
+
+    
+    const result = await uploadToCloudinary(
+      req.file.buffer,
+      "nond/store-logos"
+    );
+
+    const logoUrl = result.secure_url;
+
+   
+    const updatedStore = await Store.updateStoreLogo(
+      storeId,
+      userId,
+      logoUrl
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Logo uploaded successfully",
+      store: updatedStore,
     });
+  } catch (err) {
+    console.error("Upload logo error:", err);
+
+    return res.status(500).json({
+      error: "Failed to upload logo",
+    });
+  }
 };
 
 exports.deleteStore = async (req, res) => {
@@ -370,9 +397,7 @@ exports.deleteStore = async (req, res) => {
     const firebaseStore = await firebaseStoreRef.get();
 
     if (firebaseStore.exists) {
-      await db.recursiveDelete(
-        firebaseStoreRef
-      );
+      await db.recursiveDelete(firebaseStoreRef);
     }
 
     const store = await Store.deleteStore(
@@ -417,16 +442,31 @@ exports.getStoreStats = async (req, res) => {
     const userId = req.user.id;
     const { storeId } = req.params;
 
-    const existingStore = await Store.getStoreById(storeId, userId);
+    const existingStore = await Store.getStoreById(
+      storeId,
+      userId
+    );
+
     if (!existingStore) {
-      return res.status(404).json({ error: "Store not found" });
+      return res.status(404).json({
+        error: "Store not found",
+      });
     }
 
     const stats = await Store.getStoreStats(storeId);
 
-    return res.status(200).json({ success: true, stats });
+    return res.status(200).json({
+      success: true,
+      stats,
+    });
   } catch (err) {
-    console.error("Get store stats error:", err);
-    return res.status(500).json({ error: "Failed to get store stats" });
+    console.error(
+      "Get store stats error:",
+      err
+    );
+
+    return res.status(500).json({
+      error: "Failed to get store stats",
+    });
   }
 };
