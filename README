@@ -64,8 +64,6 @@ business data .
                                 ▼
                            Transaction
                                 │
-                                ▼
-                        Business History
                                 │
                                 ▼
                          Store Insights
@@ -74,21 +72,7 @@ business data .
               ▼                 ▼                 ▼
           Inventory           Sales          Stock Status
               │                 │                 │
-              └─────────────────┼─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │    AI LAYER     │
-                       └────────┬────────┘
-                                │
-                                ▼
-                       AI Analysis / Result
-                                │
-                 ┌──────────────┼──────────────┐
-                 ▼              ▼              ▼
-              Insights     Recommendations   Alerts
-                 │              │              │
-                 └──────────────┼──────────────┘
+              └─────────────────┼─────────────────┘ 
                                 │
                                 ▼
                        ┌─────────────────┐
@@ -96,41 +80,9 @@ business data .
                        └────────┬────────┘
                                 │
                     ┌───────────┼───────────┐
-                    ▼           ▼           ▼
-                 Dashboard   Reports    Notifications
-                                            │
-                                            ▼
-                                      Firebase Push
+                    ▼                       ▼
+                 Dashboard               Reports  
 
 
                                                    
             
-
-AI LAYER :-
-
-                 BUSINESS ACTIVITY
-                         │
-                         ▼
-                    TRANSACTIONS
-                         │
-                         ▼
-                  BUSINESS HISTORY
-                         │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-         MONTHLY REPORT          AI LAYER
-              │                     │
-              │             ┌───────┼────────┐
-              │             ▼       ▼        ▼
-              │         Analysis Prediction Recommendation
-              │             │       │        │
-              └─────────────┼───────┼────────┘
-                            ▼
-                    MONTHLY INSIGHTS
-                            │
-             ┌──────────────┼──────────────┐
-             ▼              ▼              ▼
-          Dashboard       PDF/Report   Notifications
-                            │
-                            ▼
-                         VENDOR
